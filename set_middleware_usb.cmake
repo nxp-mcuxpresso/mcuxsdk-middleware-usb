@@ -23,359 +23,6 @@ add_config_file(${CMAKE_CURRENT_LIST_DIR}/./output/npw/dcd_config/hsdcd/usb_hsdc
 endif()
 
 
-if (CONFIG_USE_middleware_usb_host_khci)
-# Add set(CONFIG_USE_middleware_usb_host_khci true) in config.cmake to use this component
-
-message("middleware_usb_host_khci component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947) AND CONFIG_USE_middleware_usb_host_khci_config_header AND CONFIG_USE_middleware_usb_host_common_header)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_khci.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host
-  ${CMAKE_CURRENT_LIST_DIR}/./include
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_khci dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_ehci)
-# Add set(CONFIG_USE_middleware_usb_host_ehci true) in config.cmake to use this component
-
-message("middleware_usb_host_ehci component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx) AND CONFIG_USE_middleware_usb_host_ehci_config_header AND CONFIG_USE_middleware_usb_host_common_header AND ((CONFIG_USE_middleware_usb_phy AND (CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx)) OR (NOT (CONFIG_NOT STREQUAL MCXN235 OR CONFIG_NOT STREQUAL MCXN236 OR CONFIG_NOT STREQUAL MCXN546 OR CONFIG_NOT STREQUAL MCXN547 OR CONFIG_NOT STREQUAL MCXN946 OR CONFIG_NOT STREQUAL MCXN947 OR CONFIG_NOT STREQUAL MIMXRT1061xxxxA OR CONFIG_NOT STREQUAL MIMXRT1061xxxxB OR CONFIG_NOT STREQUAL MIMXRT1062xxxxA OR CONFIG_NOT STREQUAL MIMXRT1062xxxxB OR CONFIG_NOT STREQUAL MIMXRT1171xxxxx OR CONFIG_NOT STREQUAL MIMXRT1172xxxxx OR CONFIG_NOT STREQUAL MIMXRT1173xxxxx OR CONFIG_NOT STREQUAL MIMXRT1175xxxxx OR CONFIG_NOT STREQUAL MIMXRT1176xxxxx OR CONFIG_NOT STREQUAL MIMXRT1187xxxxx OR CONFIG_NOT STREQUAL MIMXRT1189xxxxx))) AND (NOT (CONFIG_NOT STREQUAL RW612 OR CONFIG_NOT STREQUAL RW610))) OR ((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx) AND CONFIG_USE_middleware_usb_host_ehci_config_header AND CONFIG_USE_middleware_usb_host_common_header AND CONFIG_USE_driver_memory AND (CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL RW610)))
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_ehci.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host
-  ${CMAKE_CURRENT_LIST_DIR}/./include
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_ehci dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_audio)
-# Add set(CONFIG_USE_middleware_usb_host_audio true) in config.cmake to use this component
-
-message("middleware_usb_host_audio component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_audio.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_audio dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_cdc)
-# Add set(CONFIG_USE_middleware_usb_host_cdc true) in config.cmake to use this component
-
-message("middleware_usb_host_cdc component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_cdc dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_cdc_ecm)
-# Add set(CONFIG_USE_middleware_usb_host_cdc_ecm true) in config.cmake to use this component
-
-message("middleware_usb_host_cdc_ecm component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack AND CONFIG_USE_middleware_usb_host_cdc)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc_ecm.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_cdc_ecm dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_cdc_rndis)
-# Add set(CONFIG_USE_middleware_usb_host_cdc_rndis true) in config.cmake to use this component
-
-message("middleware_usb_host_cdc_rndis component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack AND CONFIG_USE_middleware_usb_host_cdc)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc_rndis.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_cdc_rndis dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_hid)
-# Add set(CONFIG_USE_middleware_usb_host_hid true) in config.cmake to use this component
-
-message("middleware_usb_host_hid component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hid.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_hid dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_msd)
-# Add set(CONFIG_USE_middleware_usb_host_msd true) in config.cmake to use this component
-
-message("middleware_usb_host_msd component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_msd.c
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_msd_ufi.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_msd dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_video)
-# Add set(CONFIG_USE_middleware_usb_host_video true) in config.cmake to use this component
-
-message("middleware_usb_host_video component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_video.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_video dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_phdc)
-# Add set(CONFIG_USE_middleware_usb_host_phdc true) in config.cmake to use this component
-
-message("middleware_usb_host_phdc component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_phdc.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_phdc dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_printer)
-# Add set(CONFIG_USE_middleware_usb_host_printer true) in config.cmake to use this component
-
-message("middleware_usb_host_printer component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_middleware_usb_host_stack)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_printer.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_printer dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_common_header)
-# Add set(CONFIG_USE_middleware_usb_host_common_header true) in config.cmake to use this component
-
-message("middleware_usb_host_common_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_component_osa AND CONFIG_USE_middleware_usb_common_header)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_common_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_khci_config_header)
-# Add set(CONFIG_USE_middleware_usb_host_khci_config_header true) in config.cmake to use this component
-
-message("middleware_usb_host_khci_config_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947))
-
-add_config_file(${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/khci/usb_host_config.h ${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/khci middleware_usb_host_khci_config_header)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_khci_config_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_ehci_config_header)
-# Add set(CONFIG_USE_middleware_usb_host_ehci_config_header true) in config.cmake to use this component
-
-message("middleware_usb_host_ehci_config_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx))
-
-add_config_file(${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/ehci/usb_host_config.h ${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/ehci middleware_usb_host_ehci_config_header)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_ehci_config_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
-if (CONFIG_USE_middleware_usb_host_stack)
-# Add set(CONFIG_USE_middleware_usb_host_stack true) in config.cmake to use this component
-
-message("middleware_usb_host_stack component is included from ${CMAKE_CURRENT_LIST_FILE}.")
-
-if(CONFIG_USE_component_osa AND (CONFIG_USE_middleware_usb_host_khci OR CONFIG_USE_middleware_usb_host_ehci))
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_hci.c
-  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_devices.c
-  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_framework.c
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hub.c
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hub_app.c
-)
-
-target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/./host
-  ${CMAKE_CURRENT_LIST_DIR}/./host/class
-  ${CMAKE_CURRENT_LIST_DIR}/./include
-)
-
-else()
-
-message(SEND_ERROR "middleware_usb_host_stack dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
-
-endif()
-
-endif()
-
-
 if (CONFIG_USE_middleware_usb_device_khci_config_header)
 # Add set(CONFIG_USE_middleware_usb_device_khci_config_header true) in config.cmake to use this component
 
@@ -859,6 +506,359 @@ target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
 else()
 
 message(SEND_ERROR "middleware_usb_device_controller_driver dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_khci)
+# Add set(CONFIG_USE_middleware_usb_host_khci true) in config.cmake to use this component
+
+message("middleware_usb_host_khci component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947) AND CONFIG_USE_middleware_usb_host_khci_config_header AND CONFIG_USE_middleware_usb_host_common_header)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_khci.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host
+  ${CMAKE_CURRENT_LIST_DIR}/./include
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_khci dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_ehci)
+# Add set(CONFIG_USE_middleware_usb_host_ehci true) in config.cmake to use this component
+
+message("middleware_usb_host_ehci component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx) AND CONFIG_USE_middleware_usb_host_ehci_config_header AND CONFIG_USE_middleware_usb_host_common_header AND ((CONFIG_USE_middleware_usb_phy AND (CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx)) OR (NOT (CONFIG_NOT STREQUAL MCXN235 OR CONFIG_NOT STREQUAL MCXN236 OR CONFIG_NOT STREQUAL MCXN546 OR CONFIG_NOT STREQUAL MCXN547 OR CONFIG_NOT STREQUAL MCXN946 OR CONFIG_NOT STREQUAL MCXN947 OR CONFIG_NOT STREQUAL MIMXRT1061xxxxA OR CONFIG_NOT STREQUAL MIMXRT1061xxxxB OR CONFIG_NOT STREQUAL MIMXRT1062xxxxA OR CONFIG_NOT STREQUAL MIMXRT1062xxxxB OR CONFIG_NOT STREQUAL MIMXRT1171xxxxx OR CONFIG_NOT STREQUAL MIMXRT1172xxxxx OR CONFIG_NOT STREQUAL MIMXRT1173xxxxx OR CONFIG_NOT STREQUAL MIMXRT1175xxxxx OR CONFIG_NOT STREQUAL MIMXRT1176xxxxx OR CONFIG_NOT STREQUAL MIMXRT1187xxxxx OR CONFIG_NOT STREQUAL MIMXRT1189xxxxx))) AND (NOT (CONFIG_NOT STREQUAL RW612 OR CONFIG_NOT STREQUAL RW610))) OR ((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx) AND CONFIG_USE_middleware_usb_host_ehci_config_header AND CONFIG_USE_middleware_usb_host_common_header AND CONFIG_USE_driver_memory AND (CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL RW610)))
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_ehci.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host
+  ${CMAKE_CURRENT_LIST_DIR}/./include
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_ehci dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_audio)
+# Add set(CONFIG_USE_middleware_usb_host_audio true) in config.cmake to use this component
+
+message("middleware_usb_host_audio component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_audio.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_audio dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_cdc)
+# Add set(CONFIG_USE_middleware_usb_host_cdc true) in config.cmake to use this component
+
+message("middleware_usb_host_cdc component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_cdc dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_cdc_ecm)
+# Add set(CONFIG_USE_middleware_usb_host_cdc_ecm true) in config.cmake to use this component
+
+message("middleware_usb_host_cdc_ecm component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack AND CONFIG_USE_middleware_usb_host_cdc)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc_ecm.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_cdc_ecm dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_cdc_rndis)
+# Add set(CONFIG_USE_middleware_usb_host_cdc_rndis true) in config.cmake to use this component
+
+message("middleware_usb_host_cdc_rndis component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack AND CONFIG_USE_middleware_usb_host_cdc)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_cdc_rndis.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_cdc_rndis dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_hid)
+# Add set(CONFIG_USE_middleware_usb_host_hid true) in config.cmake to use this component
+
+message("middleware_usb_host_hid component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hid.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_hid dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_msd)
+# Add set(CONFIG_USE_middleware_usb_host_msd true) in config.cmake to use this component
+
+message("middleware_usb_host_msd component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_msd.c
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_msd_ufi.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_msd dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_video)
+# Add set(CONFIG_USE_middleware_usb_host_video true) in config.cmake to use this component
+
+message("middleware_usb_host_video component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_video.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_video dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_phdc)
+# Add set(CONFIG_USE_middleware_usb_host_phdc true) in config.cmake to use this component
+
+message("middleware_usb_host_phdc component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_phdc.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_phdc dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_printer)
+# Add set(CONFIG_USE_middleware_usb_host_printer true) in config.cmake to use this component
+
+message("middleware_usb_host_printer component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_middleware_usb_host_stack)
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_printer.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_printer dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_common_header)
+# Add set(CONFIG_USE_middleware_usb_host_common_header true) in config.cmake to use this component
+
+message("middleware_usb_host_common_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_component_osa AND CONFIG_USE_middleware_usb_common_header)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_common_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_khci_config_header)
+# Add set(CONFIG_USE_middleware_usb_host_khci_config_header true) in config.cmake to use this component
+
+message("middleware_usb_host_khci_config_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947))
+
+add_config_file(${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/khci/usb_host_config.h ${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/khci middleware_usb_host_khci_config_header)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_khci_config_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_ehci_config_header)
+# Add set(CONFIG_USE_middleware_usb_host_ehci_config_header true) in config.cmake to use this component
+
+message("middleware_usb_host_ehci_config_header component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if((CONFIG_DEVICE_ID STREQUAL MCXN546 OR CONFIG_DEVICE_ID STREQUAL MCXN547 OR CONFIG_DEVICE_ID STREQUAL MCXN946 OR CONFIG_DEVICE_ID STREQUAL MCXN947 OR CONFIG_DEVICE_ID STREQUAL MCXN235 OR CONFIG_DEVICE_ID STREQUAL MCXN236 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1061xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxA OR CONFIG_DEVICE_ID STREQUAL MIMXRT1062xxxxB OR CONFIG_DEVICE_ID STREQUAL MIMXRT1171xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1172xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1173xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1175xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1176xxxxx OR CONFIG_DEVICE_ID STREQUAL RW610 OR CONFIG_DEVICE_ID STREQUAL RW612 OR CONFIG_DEVICE_ID STREQUAL MIMXRT1181xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1182xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1187xxxxx OR CONFIG_DEVICE_ID STREQUAL MIMXRT1189xxxxx))
+
+add_config_file(${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/ehci/usb_host_config.h ${CMAKE_CURRENT_LIST_DIR}/./output/npw/host_config/ehci middleware_usb_host_ehci_config_header)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_ehci_config_header dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
+
+endif()
+
+endif()
+
+
+if (CONFIG_USE_middleware_usb_host_stack)
+# Add set(CONFIG_USE_middleware_usb_host_stack true) in config.cmake to use this component
+
+message("middleware_usb_host_stack component is included from ${CMAKE_CURRENT_LIST_FILE}.")
+
+if(CONFIG_USE_component_osa AND (CONFIG_USE_middleware_usb_host_khci OR CONFIG_USE_middleware_usb_host_ehci))
+
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
+  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_hci.c
+  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_devices.c
+  ${CMAKE_CURRENT_LIST_DIR}/./host/usb_host_framework.c
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hub.c
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class/usb_host_hub_app.c
+)
+
+target_include_directories(${MCUX_SDK_PROJECT_NAME} PUBLIC
+  ${CMAKE_CURRENT_LIST_DIR}/./host
+  ${CMAKE_CURRENT_LIST_DIR}/./host/class
+  ${CMAKE_CURRENT_LIST_DIR}/./include
+)
+
+else()
+
+message(SEND_ERROR "middleware_usb_host_stack dependency does not meet, please check ${CMAKE_CURRENT_LIST_FILE}.")
 
 endif()
 
