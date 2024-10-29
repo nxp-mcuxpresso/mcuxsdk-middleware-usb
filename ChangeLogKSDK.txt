@@ -8,7 +8,6 @@
       - Support USB for KConfig Configuration System and CMake Build System.
       - Enable cache maintentance on i.MX RT 4-digit series and mimxrt700evk.
       - Split usb audio cases for LPC54xxx series with others.
-  The current version of USB stack is 2.10.1.
   - 2.10.1
     - Improvement:
       - Host cdc acm
