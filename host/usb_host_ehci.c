@@ -3882,7 +3882,7 @@ static usb_status_t USB_HostEhciControlBus(usb_host_ehci_instance_t *ehciInstanc
                 ehciInstance->busSuspendStatus = kBus_EhciL1StartSleep;
                 deviceInstance = (usb_host_device_instance_t *)hostPointer->suspendedDevice;
                  OSA_ENTER_CRITICAL();
-                /* Workaroud for TKT0634948: begin */
+                /* Workaroud for ERR052428: begin */
                 ehciInstance->ehciIpBase->USBSTS |= USB_USBSTS_SRI_MASK;
                 /* wait the next SOF */
                 while ((0U == (ehciInstance->ehciIpBase->USBSTS & USB_USBSTS_SRI_MASK)) && (0U != lpm_count))
@@ -3892,7 +3892,7 @@ static usb_status_t USB_HostEhciControlBus(usb_host_ehci_instance_t *ehciInstanc
                 ehciInstance->registerNcBase->LPM_CSR2 |= ((uint32_t)USBNC_LPM_CSR2_LPM_HST_SEND_MASK |
                   (((uint32_t)deviceInstance->setAddress << USBNC_LPM_CSR2_LPM_HST_DEVADD_SHIFT) &
                   (uint32_t)USBNC_LPM_CSR2_LPM_HST_DEVADD_MASK));
-                /* Workaroud for TKT0634948: end */
+                /* Workaroud for ERR052428: end */
                 OSA_EXIT_CRITICAL();
             }
             else
