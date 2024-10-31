@@ -353,7 +353,7 @@ _Pragma("diag_suppress=Pm120")
 #if defined(__CC_ARM)
 #define USB_LINK_DMA_NONINIT_DATA __attribute__((section("CacheLineData"))) __attribute__((zero_init))
 #else
-#define USB_LINK_DMA_NONINIT_DATA __attribute__((section(".bss.CacheLineData")))
+#define USB_LINK_DMA_NONINIT_DATA __attribute__((section("CacheLineData")))
 #endif
 #if defined(__CC_ARM)
 #define USB_LINK_NONCACHE_NONINIT_DATA __attribute__((section("NonCacheable"))) __attribute__((zero_init))
