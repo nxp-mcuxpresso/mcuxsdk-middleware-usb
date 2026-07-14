@@ -24,7 +24,7 @@ Follow the steps below to access \(program, read, erase\) the FTFE\_FOPT registe
     w1 0x40023000 0x80 // Trigger operation
     ```
 
-4.  Additional information is available on webpage [https://wiki.segger.com/K32W\#Boot\_ROM](https://wiki.segger.com/K32W). For download issue, see the “Getting Started with MCUXpresso SDK for K32W0X2S.pdf”.
+4.  Additional information is available on webpage [https://kb.segger.com/NXP_K32W\#Boot\_ROM](https://kb.segger.com/NXP_K32W). For download issue, see the “Getting Started with MCUXpresso SDK for K32W0X2S.pdf”.
 
     K32 has M4 and M0+ cores. USB example can run on both cores. The USB example in the release package runs on M4 core. However, this example project can be migrated from M4 to M0p core. M4 and M0p USB project use same source files with different project setting. Use the following steps to change M4 project to M0P project with IAR, MDK, and GCC compilers. Other compilers have similar way to migrate project from M4 to M0p.
 
