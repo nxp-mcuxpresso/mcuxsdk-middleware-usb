@@ -8294,7 +8294,7 @@ static uint8_t PD_CheckWhetherInitiateCableDiscoveryIdentityOrNot(pd_instance_t 
 
 static pd_state_machine_state_t PD_PsmStateMachine(pd_instance_t *pdInstance)
 {
-    pd_state_machine_state_t returnVal = kSM_Continue;
+    pd_state_machine_state_t returnVal;
 
     /* Did we do anything in Step A or B or C */
     /* Step A: common process */
