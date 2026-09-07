@@ -1335,9 +1335,19 @@ usb_status_t USB_HostCdcGetAcmDescriptor(usb_host_class_handle classHandle,
                 }
                 break;
             case USB_HOST_DESC_SUBTYPE_CM:
+                if (ptr1->common.bLength < 5U)
+                {
+                    status = kStatus_USB_Error;
+                    break;
+                }
                 *callManageDesc = &cdc_common_ptr->callManage;
                 break;
             case USB_HOST_DESC_SUBTYPE_ACM:
+                if (ptr1->common.bLength < 4U)
+                {
+                    status = kStatus_USB_Error;
+                    break;
+                }
                 *abstractControlDesc = &cdc_common_ptr->acm;
                 break;
             default:
@@ -1420,6 +1430,11 @@ usb_status_t USB_HostCdcGetEcmDescriptor(usb_host_class_handle classHandle,
                     break;
 
                 case USB_HOST_DESC_SUBTYPE_ECM:
+                    if (ifBuffer->common.bLength < 13U)
+                    {
+                        status = kStatus_USB_Error;
+                        break;
+                    }
                     ifEthernetNetworkingDesc            = &funcBuffer->ecm;
                     cdcInstance->headDesc               = ifHeadDesc;
                     cdcInstance->unionInterfaceDesc     = ifUnionInterfaceDesc;

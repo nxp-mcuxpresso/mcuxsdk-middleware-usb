@@ -952,7 +952,9 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
     {
         case NDIS_OID_GEN_CURRENT_PACKET_FILTER:
             /* Current packet filter (encoded) - Query and Set Mandatory - General Operational Characteristic*/
-            if (rndisSetMsg->informationBufferLength != 4U)
+            if ((rndisSetMsg->informationBufferLength != 4U) ||
+                (rndisSetMsg->informationBufferOffset >
+                 (RNDIS_MAX_EXPECTED_COMMAND_SIZE - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint32_t))))
             {
                 rndisSetCmplt->status = RNDIS_STATUS_INVALID_DATA;
             }
@@ -995,7 +997,9 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
             break;
         case NDIS_OID_802_3_MULTICAST_LIST:
             /* Current multicast address list - Query and Set Mandatory - Ethernet Operational Characteristic*/
-            if (rndisSetMsg->informationBufferLength != RNDIS_ETHER_ADDR_SIZE)
+            if ((rndisSetMsg->informationBufferLength != RNDIS_ETHER_ADDR_SIZE) ||
+                (rndisSetMsg->informationBufferOffset >
+                 (RNDIS_MAX_EXPECTED_COMMAND_SIZE - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint64_t))))
             {
                 rndisSetCmplt->status = RNDIS_STATUS_INVALID_DATA;
             }

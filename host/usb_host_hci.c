@@ -738,8 +738,7 @@ usb_status_t USB_HostHelperParseAlternateSetting(usb_host_interface_handle inter
     /* parse endpoint descriptor */
     if (interface->interfaceDesc->bNumEndpoints != 0U)
     {
-        if ((unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_ENDPOINT) ||
-            (interface->interfaceDesc->bNumEndpoints > USB_HOST_CONFIG_INTERFACE_MAX_EP))
+        if (interface->interfaceDesc->bNumEndpoints > USB_HOST_CONFIG_INTERFACE_MAX_EP)
         {
 #ifdef HOST_ECHO
             usb_echo("interface descriptor error\n");
