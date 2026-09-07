@@ -511,17 +511,31 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
     length = 0U;
     while (length < interface_ptr->interfaceExtensionLength)
     {
-        if ((ptr1.common->bDescriptorType == 0x04U) && (ptr1.interface->bAlternateSetting == alternateSetting))
+        if ((ptr1.common->bLength < 2U) || (ptr1.common->bLength + length > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        if ((ptr1.common->bLength >= USB_DESCRIPTOR_LENGTH_INTERFACE) && (ptr1.common->bDescriptorType == 0x04U) &&
+            (ptr1.interface->bAlternateSetting == alternateSetting))
         {
             interface_ptr->epCount = ptr1.interface->bNumEndpoints;
+            if (interface_ptr->epCount > USB_HOST_CONFIG_INTERFACE_MAX_EP)
+            {
+                interface_ptr->epCount = USB_HOST_CONFIG_INTERFACE_MAX_EP;
+            }
             break;
         }
         ptr1.bufr += ptr1.common->bLength;
         length += ptr1.common->bLength;
     }
+
     while (ep < interface_ptr->epCount)
     {
-        if (ptr1.common->bDescriptorType == 0x24U)
+        if ((ptr1.common->bLength < 2U) || (length + ptr1.common->bLength > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        if ((ptr1.common->bLength >= 3U) && (ptr1.common->bDescriptorType == 0x24U))
         {
             temp = (void *)ptr1.bufr;
             if (AUDIO_DEVICE_VERSION_01 == audioPtr->deviceAudioVersion)
@@ -564,7 +578,7 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             /*no action*/
         }
 
-        if (ptr1.common->bDescriptorType == 0x05U)
+        if ((ptr1.common->bLength >= USB_DESCRIPTOR_LENGTH_ENDPOINT) && (ptr1.common->bDescriptorType == 0x05U))
         {
             uint32_t descLength = 0;
             temp                = (void *)ptr1.bufr;
@@ -589,8 +603,9 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
 
             descLength = ptr1.common->bLength;
             ptr1.bufr += ptr1.common->bLength;
+            length += descLength;
 
-            if ((0x25U == ptr1.common->bDescriptorType))
+            if ((length + 2U <= interface_ptr->interfaceExtensionLength) && (0x25U == ptr1.common->bDescriptorType))
             {
                 interface_ptr->epList[ep].epExtension       = ptr1.bufr;
                 interface_ptr->epList[ep].epExtensionLength = ptr1.common->bLength;
@@ -598,9 +613,17 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             else
             {
                 ptr1.bufr -= descLength;
+                length -= descLength;
             }
             ep++;
         }
+
+        if ((length >= interface_ptr->interfaceExtensionLength) || (ptr1.common->bLength < 2U) ||
+            (length + ptr1.common->bLength > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        length += ptr1.common->bLength;
         ptr1.bufr += ptr1.common->bLength;
     }
 
@@ -614,7 +637,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
         /* find audio input or output terminal firstly bases on as general descriptor */
         while (length < ctrlInterface_ptr->interfaceExtensionLength)
         {
-            if (ctrl_ptr.common->bDescriptorType == 0x24U)
+            if ((ctrl_ptr.common->bLength < 2U) ||
+                (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+            {
+                return kStatus_USB_Error;
+            }
+            if ((ctrl_ptr.common->bLength >= 8U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
             {
                 temp = (void *)ctrl_ptr.bufr;
                 if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_INPUT)
@@ -649,7 +677,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             length = 0U;
             while (length < ctrlInterface_ptr->interfaceExtensionLength)
             {
-                if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                if ((ctrl_ptr.common->bLength < 2U) ||
+                    (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                {
+                    return kStatus_USB_Error;
+                }
+                if ((ctrl_ptr.common->bLength >= 9U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                 {
                     temp = (void *)ctrl_ptr.bufr;
                     if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_FEATURE)
@@ -665,7 +698,7 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                         if (audioPtr->fuDesc == NULL)
                         {
                             usb_audio_2_0_ctrl_mu_desc_t *mix_unit = (usb_audio_2_0_ctrl_mu_desc_t *)temp;
-                            for (uint8_t i = 0; i < mix_unit->bNrInPins; i++)
+                            for (uint8_t i = 0; (i < mix_unit->bNrInPins) && (i < 4U); i++)
                             {
                                 if (entity_id == mix_unit->baSourceID[i])
                                 {
@@ -692,7 +725,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                 fu_ptr= (usb_audio_2_0_ctrl_fu_desc_t *)audioPtr->fuDesc;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 9U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_OUTPUT)
@@ -718,7 +756,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     length = 0U;
                     while (length < ctrlInterface_ptr->interfaceExtensionLength)
                     {
-                        if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                        if ((ctrl_ptr.common->bLength < 2U) ||
+                            (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                        {
+                            return kStatus_USB_Error;
+                        }
+                        if ((ctrl_ptr.common->bLength >= 4U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                         {
                             temp = (void *)ctrl_ptr.bufr;
                             if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_CLOCK_SOURE)
@@ -742,7 +785,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                 length = 0U;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 5U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_FEATURE)
@@ -751,7 +799,7 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             {
                                 audioPtr->fuDesc = (void *)temp;
                                 entity_id = ctrl_ptr.common->bData[1]; /* entity_id is fu id */
-                                break; 
+                                break;
                             }
                         }
                     }
@@ -759,12 +807,17 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     length += ctrl_ptr.common->bLength;
 
                 }
-                
+
                 ctrl_ptr.bufr = ctrlInterface_ptr->interfaceExtension;
                 length = 0U;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 9U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_OUTPUT)
@@ -790,7 +843,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     length = 0U;
                     while (length < ctrlInterface_ptr->interfaceExtensionLength)
                     {
-                        if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                        if ((ctrl_ptr.common->bLength < 2U) ||
+                            (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                        {
+                            return kStatus_USB_Error;
+                        }
+                        if ((ctrl_ptr.common->bLength >= 4U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                         {
                             temp = (void *)ctrl_ptr.bufr;
                             if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_CLOCK_SOURE)
@@ -818,7 +876,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             length = 0U;
             while (length < ctrlInterface_ptr->interfaceExtensionLength)
             {
-                if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                if ((ctrl_ptr.common->bLength < 2U) ||
+                    (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                {
+                    return kStatus_USB_Error;
+                }
+                if ((ctrl_ptr.common->bLength >= 6U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                 {
                     temp = (void *)ctrl_ptr.bufr;
                     if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_FEATURE)
@@ -827,7 +890,7 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                         {
                             audioPtr->fuDesc = (void *)temp;
                             entity_id = ctrl_ptr.common->bData[2]; /* entity_id is it id */
-                            break; 
+                            break;
                         }
                     }
                     else if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_SELECTOR)
@@ -854,7 +917,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                 length = 0U;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 8U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_INPUT)
@@ -866,7 +934,7 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 {
                                     entity_id = ctrl_ptr.common->bData[5]; /* entity_id is clock source id */
                                 }
-                                break; 
+                                break;
                             }
                         }
                     }
@@ -885,7 +953,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     length = 0U;
                     while (length < ctrlInterface_ptr->interfaceExtensionLength)
                     {
-                        if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                        if ((ctrl_ptr.common->bLength < 2U) ||
+                            (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                        {
+                            return kStatus_USB_Error;
+                        }
+                        if ((ctrl_ptr.common->bLength >= 4U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                         {
                             temp = (void *)ctrl_ptr.bufr;
                             if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_CLOCK_SOURE)
@@ -910,7 +983,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                 length = 0U;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 5U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_FEATURE)
@@ -919,24 +997,29 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             {
                                 audioPtr->fuDesc = (void *)temp;
                                 entity_id = ctrl_ptr.common->bData[2]; /* entity_id is it id */
-                                break;  
+                                break;
                             }
                         }
                     }
                     ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
                 }
-                
+
                 if (NULL == audioPtr->fuDesc)
                 {
                     return kStatus_USB_Error;
                 }
-                
+
                 ctrl_ptr.bufr = ctrlInterface_ptr->interfaceExtension;
                 length = 0U;
                 while (length < ctrlInterface_ptr->interfaceExtensionLength)
                 {
-                    if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                    if ((ctrl_ptr.common->bLength < 2U) ||
+                        (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                    {
+                        return kStatus_USB_Error;
+                    }
+                    if ((ctrl_ptr.common->bLength >= 8U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                     {
                         temp = (void *)ctrl_ptr.bufr;
                         if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_INPUT)
@@ -948,12 +1031,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 {
                                     entity_id = ctrl_ptr.common->bData[5]; /* entity_id is clock source id */
                                 }
-                                break; 
+                                break;
                             }
                         }
-                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
-                        length += ctrl_ptr.common->bLength;
                     }
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
+                    length += ctrl_ptr.common->bLength;
                 }
                 
                 if (AUDIO_DEVICE_VERSION_02 == audioPtr->deviceAudioVersion)
@@ -967,7 +1050,12 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     length = 0U;
                     while (length < ctrlInterface_ptr->interfaceExtensionLength)
                     {
-                        if (ctrl_ptr.common->bDescriptorType == 0x24U)
+                        if ((ctrl_ptr.common->bLength < 2U) ||
+                            (ctrl_ptr.common->bLength + length > ctrlInterface_ptr->interfaceExtensionLength))
+                        {
+                            return kStatus_USB_Error;
+                        }
+                        if ((ctrl_ptr.common->bLength >= 4U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                         {
                             temp = (void *)ctrl_ptr.bufr;
                             if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_CLOCK_SOURE)
@@ -1089,9 +1177,14 @@ usb_status_t USB_HostAudioControlSetInterface(usb_host_class_handle classHandle,
 
     while (length < interface_ptr->interfaceExtensionLength)
     {
+        if ((ptr1.common->bLength < 2U) || (ptr1.common->bLength + length > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
         if (((interface_ptr->interfaceDesc->bDescriptorType == 0x04U) &&
              (interface_ptr->interfaceDesc->bAlternateSetting == alternateSetting)) ||
-            ((ptr1.common->bDescriptorType == 0x04U) && (ptr1.interface->bAlternateSetting == alternateSetting)))
+            ((ptr1.common->bLength >= USB_DESCRIPTOR_LENGTH_INTERFACE) && (ptr1.common->bDescriptorType == 0x04U) &&
+             (ptr1.interface->bAlternateSetting == alternateSetting)))
         {
             break;
         }
@@ -1101,7 +1194,11 @@ usb_status_t USB_HostAudioControlSetInterface(usb_host_class_handle classHandle,
     }
     while (length < interface_ptr->interfaceExtensionLength)
     {
-        if (ptr1.common->bDescriptorType == 0x24U)
+        if ((ptr1.common->bLength < 2U) || (ptr1.common->bLength + length > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        if ((ptr1.common->bLength >= 5U) && (ptr1.common->bDescriptorType == 0x24U))
         {
             temp = (void *)ptr1.bufr;
             if (ptr1.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_HEADER)

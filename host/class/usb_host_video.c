@@ -473,7 +473,12 @@ usb_status_t USB_HostVideoStreamSetInterface(usb_host_class_handle classHandle,
         length         = 0U;
         while (length < interface_ptr->interfaceExtensionLength)
         {
-            if (descUnion.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE)
+            if ((descUnion.common->bLength < 2U) ||
+                (length + descUnion.common->bLength > interface_ptr->interfaceExtensionLength))
+            {
+                return kStatus_USB_Error;
+            }
+            if ((descUnion.common->bLength >= 3U) && (descUnion.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE))
             {
                 if (descUnion.common->bData[0] == USB_HOST_DESC_SUBTYPE_VS_INPUT_HEADER)
                 {
@@ -492,10 +497,20 @@ usb_status_t USB_HostVideoStreamSetInterface(usb_host_class_handle classHandle,
         length         = 0U;
         while (length < interface_ptr->interfaceExtensionLength)
         {
-            if ((descUnion.common->bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
+            if ((descUnion.common->bLength < 2U) ||
+                (length + descUnion.common->bLength > interface_ptr->interfaceExtensionLength))
+            {
+                return kStatus_USB_Error;
+            }
+            if ((descUnion.common->bLength >= USB_DESCRIPTOR_LENGTH_INTERFACE) &&
+                (descUnion.common->bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
                 (descUnion.interface->bAlternateSetting == alternateSetting))
             {
                 interface_ptr->epCount = descUnion.interface->bNumEndpoints;
+                if (interface_ptr->epCount > USB_HOST_CONFIG_INTERFACE_MAX_EP)
+                {
+                    interface_ptr->epCount = USB_HOST_CONFIG_INTERFACE_MAX_EP;
+                }
                 break;
             }
             length += descUnion.common->bLength;
@@ -504,14 +519,22 @@ usb_status_t USB_HostVideoStreamSetInterface(usb_host_class_handle classHandle,
 
         while (ep < interface_ptr->epCount)
         {
+            if ((descUnion.common->bLength < 2U) ||
+                (length + descUnion.common->bLength > interface_ptr->interfaceExtensionLength))
+            {
+                return kStatus_USB_Error;
+            }
+
             if (descUnion.common->bDescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT)
             {
                 temp                             = (void *)descUnion.bufr;
                 interface_ptr->epList[ep].epDesc = (usb_descriptor_endpoint_t *)temp;
                 descLength                       = descUnion.common->bLength;
                 descUnion.bufr += descUnion.common->bLength;
+                length += descLength;
 
-                if (USB_HOST_DESC_CS_ENDPOINT == descUnion.common->bDescriptorType)
+                if ((length + 2U <= interface_ptr->interfaceExtensionLength) &&
+                    (USB_HOST_DESC_CS_ENDPOINT == descUnion.common->bDescriptorType))
                 {
                     interface_ptr->epList[ep].epExtension       = descUnion.bufr;
                     interface_ptr->epList[ep].epExtensionLength = descUnion.common->bLength;
@@ -519,9 +542,18 @@ usb_status_t USB_HostVideoStreamSetInterface(usb_host_class_handle classHandle,
                 else
                 {
                     descUnion.bufr -= descLength;
+                    length -= descLength;
                 }
                 ep++;
             }
+
+            if ((length >= interface_ptr->interfaceExtensionLength) ||
+                (descUnion.common->bLength < 2U) ||
+                (length + descUnion.common->bLength > interface_ptr->interfaceExtensionLength))
+            {
+                return kStatus_USB_Error;
+            }
+            length += descUnion.common->bLength;
             descUnion.bufr += descUnion.common->bLength;
         }
     }
@@ -625,9 +657,14 @@ usb_status_t USB_HostVideoControlSetInterface(usb_host_class_handle classHandle,
 
     while (length < interface_ptr->interfaceExtensionLength)
     {
+        if ((desc.common->bLength < 2U) || (length + desc.common->bLength > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
         if (((interface_ptr->interfaceDesc->bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
              (interface_ptr->interfaceDesc->bAlternateSetting == alternateSetting)) ||
-            ((desc.common->bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
+            ((desc.common->bLength >= USB_DESCRIPTOR_LENGTH_INTERFACE) &&
+             (desc.common->bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
              (desc.interface->bAlternateSetting == alternateSetting)))
         {
             break;
@@ -635,9 +672,14 @@ usb_status_t USB_HostVideoControlSetInterface(usb_host_class_handle classHandle,
         length += desc.common->bLength;
         desc.bufr += desc.common->bLength;
     }
+
     while (length < interface_ptr->interfaceExtensionLength)
     {
-        if (desc.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE)
+        if ((desc.common->bLength < 2U) || (length + desc.common->bLength > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        if ((desc.common->bLength >= 3U) && (desc.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE))
         {
             temp = (void *)desc.bufr;
             if (desc.common->bData[0] == USB_HOST_DESC_SUBTYPE_VC_HEADER)
@@ -936,13 +978,17 @@ usb_status_t USB_HostVideoStreamGetFormatDescriptor(usb_host_class_handle classH
     length         = 0U;
     while (length < interface_ptr->interfaceExtensionLength)
     {
+        if ((descUnion.common->bLength < 2U) ||
+            (length + descUnion.common->bLength > interface_ptr->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
         if (descUnion.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE)
         {
-            if (descUnion.common->bData[0] == subType)
+            if ((descUnion.common->bLength >= 3U) && (descUnion.common->bData[0] == subType))
             {
                 *descriptor = descUnion.bufr;
                 return kStatus_USB_Success;
-                ;
             }
         }
         length += descUnion.common->bLength;
@@ -970,10 +1016,13 @@ usb_status_t USB_HostVideoStreamGetFormatDescriptor(usb_host_class_handle classH
 usb_status_t USB_HostVideoStreamGetFrameDescriptor(
     usb_host_class_handle classHandle, void *formatDescriptor, uint8_t subType, uint8_t frameIndex, void **descriptor)
 {
+    usb_host_video_instance_struct_t *videoInstance = (usb_host_video_instance_struct_t *)classHandle;
+    usb_host_interface_t *interface_ptr;
     usb_host_video_stream_payload_format_common_desc_t *formatDesc =
         (usb_host_video_stream_payload_format_common_desc_t *)formatDescriptor;
     usb_host_video_descriptor_union_t desc;
     uint32_t i         = 0U;
+    uint32_t endPos;
     uint8_t frameCount = 0U;
 
     if (NULL == classHandle)
@@ -986,16 +1035,24 @@ usb_status_t USB_HostVideoStreamGetFrameDescriptor(
         return kStatus_USB_InvalidParameter;
     }
 
+    interface_ptr = (usb_host_interface_t *)videoInstance->streamIntfHandle;
+    endPos        = (uint32_t)interface_ptr->interfaceExtension + interface_ptr->interfaceExtensionLength;
+
     frameCount = formatDesc->bNumFrameDescriptors;
     desc.bufr  = (void *)formatDesc;
     desc.bufr += desc.common->bLength;
 
     while (i <= frameCount)
     {
+        if (((uint32_t)desc.bufr >= endPos) || (desc.common->bLength < 3U) ||
+            (((uint32_t)desc.bufr + desc.common->bLength) > endPos))
+        {
+            return kStatus_USB_Error;
+        }
         if ((desc.video_frame_common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE) &&
             (desc.video_frame_common->bDescriptorSubtype == subType))
         {
-            if (desc.video_frame_common->bFrameIndex == frameIndex)
+            if ((desc.common->bLength >= 4U) && (desc.video_frame_common->bFrameIndex == frameIndex))
             {
                 *descriptor = (void *)desc.bufr;
                 return kStatus_USB_Success;

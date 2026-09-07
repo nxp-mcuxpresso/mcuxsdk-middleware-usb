@@ -686,22 +686,20 @@ usb_status_t USB_HostHelperParseAlternateSetting(usb_host_interface_handle inter
     /* search for the alternate setting interface descriptor */
     while ((uint32_t)unionDes < endPosition)
     {
-        if (unionDes->interface.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE)
+        if ((unionDes->common.bLength < 2U) || (((uint32_t)unionDes + unionDes->common.bLength) > endPosition))
         {
-            if (unionDes->interface.bAlternateSetting == alternateSetting)
-            {
-                break;
-            }
-            else
-            {
-                unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
-            }
+            return kStatus_USB_Error;
         }
-        else
+
+        if ((unionDes->interface.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
+            (unionDes->common.bLength == USB_DESCRIPTOR_LENGTH_INTERFACE) &&
+            (unionDes->interface.bAlternateSetting == alternateSetting))
         {
-            unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
+            break;
         }
+        unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
     }
+
     if ((uint32_t)unionDes >= endPosition)
     {
         return kStatus_USB_Error;
@@ -719,20 +717,22 @@ usb_status_t USB_HostHelperParseAlternateSetting(usb_host_interface_handle inter
     unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
     while ((uint32_t)unionDes < endPosition)
     {
-        if ((unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_INTERFACE) &&
-            (unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_ENDPOINT))
+        if ((unionDes->common.bLength < 2U) || (((uint32_t)unionDes + unionDes->common.bLength) > endPosition))
         {
-            if (interface->interfaceExtension == NULL)
-            {
-                interface->interfaceExtension = (uint8_t *)unionDes;
-            }
-            interface->interfaceExtensionLength += unionDes->common.bLength;
-            unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
+            return kStatus_USB_Error;
         }
-        else
+        if ((unionDes->common.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) ||
+            (unionDes->common.bDescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT))
         {
             break;
         }
+
+        if (interface->interfaceExtension == NULL)
+        {
+            interface->interfaceExtension = (uint8_t *)unionDes;
+        }
+        interface->interfaceExtensionLength += unionDes->common.bLength;
+        unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
     }
 
     /* parse endpoint descriptor */
@@ -746,10 +746,12 @@ usb_status_t USB_HostHelperParseAlternateSetting(usb_host_interface_handle inter
 #endif
             return kStatus_USB_Error;
         }
+
         for (; interface->epCount < interface->interfaceDesc->bNumEndpoints; (interface->epCount)++)
         {
-            if (((uint32_t)unionDes >= endPosition) ||
-                (unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_ENDPOINT))
+            if ((((uint32_t)unionDes + USB_DESCRIPTOR_LENGTH_ENDPOINT) > endPosition) ||
+                (unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_ENDPOINT) ||
+                (unionDes->common.bLength != USB_DESCRIPTOR_LENGTH_ENDPOINT))
             {
 #ifdef HOST_ECHO
                 usb_echo("endpoint descriptor error\n");
@@ -764,20 +766,23 @@ usb_status_t USB_HostHelperParseAlternateSetting(usb_host_interface_handle inter
             unionDes                   = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
             while ((uint32_t)unionDes < endPosition)
             {
-                if ((unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_ENDPOINT) &&
-                    (unionDes->common.bDescriptorType != USB_DESCRIPTOR_TYPE_INTERFACE))
+                if ((unionDes->common.bLength < 2U) ||
+                    (((uint32_t)unionDes + unionDes->common.bLength) > endPosition))
                 {
-                    if (epParse->epExtension == NULL)
-                    {
-                        epParse->epExtension = (uint8_t *)unionDes;
-                    }
-                    epParse->epExtensionLength += unionDes->common.bLength;
-                    unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
+                    return kStatus_USB_Error;
                 }
-                else
+                if ((unionDes->common.bDescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT) ||
+                    (unionDes->common.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE))
                 {
                     break;
                 }
+
+                if (epParse->epExtension == NULL)
+                {
+                    epParse->epExtension = (uint8_t *)unionDes;
+                }
+                epParse->epExtensionLength += unionDes->common.bLength;
+                unionDes = (usb_descriptor_union_t *)((uint32_t)unionDes + unionDes->common.bLength);
             }
         }
     }

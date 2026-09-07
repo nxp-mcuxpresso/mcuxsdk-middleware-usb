@@ -659,18 +659,33 @@ usb_status_t USB_HostCdcSetDataInterface(usb_host_class_handle classHandle,
          extIndex += ifBuffer->common.bLength,
          ifBuffer = (usb_descriptor_union_t *)((uint8_t *)ifBuffer + ifBuffer->common.bLength))
     {
-        if (ifBuffer->common.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE &&
-            ifBuffer->interface.bAlternateSetting == alternateSetting)
+        if ((ifBuffer->common.bLength < 2U) ||
+            (extIndex + ifBuffer->common.bLength > ifPointer->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
+        if ((ifBuffer->common.bDescriptorType == USB_DESCRIPTOR_TYPE_INTERFACE) &&
+            (ifBuffer->common.bLength == USB_DESCRIPTOR_LENGTH_INTERFACE) &&
+            (ifBuffer->interface.bAlternateSetting == alternateSetting))
         {
             ifPointer->epCount = ifBuffer->interface.bNumEndpoints;
+            if (ifPointer->epCount > USB_HOST_CONFIG_INTERFACE_MAX_EP)
+            {
+                ifPointer->epCount = USB_HOST_CONFIG_INTERFACE_MAX_EP;
+            }
             break;
         }
     }
 
-    for (uint32_t epIndex = 0; epIndex < ifPointer->epCount && extIndex < ifPointer->interfaceExtensionLength;
+    for (uint32_t epIndex = 0; (epIndex < ifPointer->epCount) && (extIndex < ifPointer->interfaceExtensionLength);
          extIndex += ifBuffer->common.bLength,
                   ifBuffer = (usb_descriptor_union_t *)((uint8_t *)ifBuffer + ifBuffer->common.bLength))
     {
+        if ((ifBuffer->common.bLength < 2U) ||
+            (extIndex + ifBuffer->common.bLength > ifPointer->interfaceExtensionLength))
+        {
+            return kStatus_USB_Error;
+        }
         if (ifBuffer->common.bDescriptorType == USB_DESCRIPTOR_TYPE_ENDPOINT)
         {
             ifPointer->epList[epIndex].epDesc = (usb_descriptor_endpoint_t *)ifBuffer;
@@ -1283,11 +1298,21 @@ usb_status_t USB_HostCdcGetAcmDescriptor(usb_host_class_handle classHandle,
 
     while ((uint32_t)ptr1 < end_address)
     {
+        if ((ptr1->common.bLength < 3U) || (((uint32_t)ptr1 + ptr1->common.bLength) > end_address))
+        {
+            status = kStatus_USB_Error;
+            break;
+        }
         temp           = (void *)&ptr1->common;
         cdc_common_ptr = (usb_cdc_func_desc_struct_t *)temp;
         switch (cdc_common_ptr->common.bDescriptorSubtype)
         {
             case USB_HOST_DESC_SUBTYPE_HEADER:
+                if (ptr1->common.bLength < 5U)
+                {
+                    status = kStatus_USB_Error;
+                    break;
+                }
                 *headDesc = &cdc_common_ptr->head;
                 if ((((uint32_t)((*headDesc)->bcdCDC[1U]) << 8U) + (*headDesc)->bcdCDC[0U]) > 0x0110U)
                 {
@@ -1295,6 +1320,11 @@ usb_status_t USB_HostCdcGetAcmDescriptor(usb_host_class_handle classHandle,
                 }
                 break;
             case USB_HOST_DESC_SUBTYPE_UNION:
+                if (ptr1->common.bLength < 4U)
+                {
+                    status = kStatus_USB_Error;
+                    break;
+                }
                 if (cdc_common_ptr->unionDesc.bControlInterface == interface_handle->interfaceDesc->bInterfaceNumber)
                 {
                     *unionInterfaceDesc = &cdc_common_ptr->unionDesc;
@@ -1345,15 +1375,27 @@ usb_status_t USB_HostCdcGetEcmDescriptor(usb_host_class_handle classHandle,
     usb_descriptor_union_t *ifBuffer            = (usb_descriptor_union_t *)(ifPointer->interfaceExtension);
     usb_cdc_func_desc_struct_t *funcBuffer;
 
-    for (uint32_t ifIndex  = 0; ifIndex < ifPointer->interfaceExtensionLength; ifIndex += ifBuffer->common.bLength,
-                  ifBuffer = (usb_descriptor_union_t *)((uint8_t *)ifBuffer + ifBuffer->common.bLength))
+    for (uint32_t ifIndex = 0; ifIndex < ifPointer->interfaceExtensionLength;
+         ifIndex += ifBuffer->common.bLength,
+         ifBuffer = (usb_descriptor_union_t *)((uint8_t *)ifBuffer + ifBuffer->common.bLength))
     {
-        if (ifBuffer->common.bDescriptorType == 0x24U)
+        if ((ifBuffer->common.bLength < 2U) ||
+            (ifIndex + ifBuffer->common.bLength > ifPointer->interfaceExtensionLength))
+        {
+            status = kStatus_USB_Error;
+            break;
+        }
+        if ((ifBuffer->common.bDescriptorType == 0x24U) && (ifBuffer->common.bLength >= 3U))
         {
             funcBuffer = (usb_cdc_func_desc_struct_t *)ifBuffer;
             switch (funcBuffer->common.bDescriptorSubtype)
             {
                 case USB_HOST_DESC_SUBTYPE_HEADER:
+                    if (ifBuffer->common.bLength < 5U)
+                    {
+                        status = kStatus_USB_Error;
+                        break;
+                    }
                     ifHeadDesc = &funcBuffer->head;
                     if ((((uint32_t)(ifHeadDesc->bcdCDC[1U]) << 8U) + ifHeadDesc->bcdCDC[0U]) > 0x0110U)
                     {
@@ -1362,6 +1404,11 @@ usb_status_t USB_HostCdcGetEcmDescriptor(usb_host_class_handle classHandle,
                     break;
 
                 case USB_HOST_DESC_SUBTYPE_UNION:
+                    if (ifBuffer->common.bLength < 4U)
+                    {
+                        status = kStatus_USB_Error;
+                        break;
+                    }
                     if (funcBuffer->unionDesc.bControlInterface == ifPointer->interfaceDesc->bInterfaceNumber)
                     {
                         ifUnionInterfaceDesc = &funcBuffer->unionDesc;
