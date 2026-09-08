@@ -332,6 +332,14 @@ static void USB_DeviceMtpStateMachine(usb_device_mtp_struct_t *mtpHandle,
 
         case USB_DEVICE_MTP_STATE_BULK_IN: /* B */
         {
+            if (message->length > mtpHandle->transferLength)
+            {
+                /* Completed length cannot exceed the length that was requested; reject instead of
+                   underflowing transferLength. */
+                USB_DevicePrimeBulkInAndOutStall(mtpHandle, MTP_RESPONSE_TRANSACTION_CANCELLED, 1);
+                break;
+            }
+
             mtpHandle->transferDone += message->length;
             mtpHandle->transferOffset += message->length;
             mtpHandle->transferLength -= message->length;
@@ -441,6 +449,14 @@ static void USB_DeviceMtpStateMachine(usb_device_mtp_struct_t *mtpHandle,
 
         case USB_DEVICE_MTP_STATE_BULK_OUT: /* B */
         {
+            if (message->length > mtpHandle->transferLength)
+            {
+                /* Completed length cannot exceed the length that was requested; reject instead of
+                   underflowing transferLength. */
+                USB_DevicePrimeBulkInAndOutStall(mtpHandle, MTP_RESPONSE_TRANSACTION_CANCELLED, 1);
+                break;
+            }
+
             mtpHandle->transferDone += message->length;
             mtpHandle->transferOffset += message->length;
             mtpHandle->transferLength -= message->length;
