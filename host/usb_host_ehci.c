@@ -718,6 +718,7 @@ static void USB_HostEhciTestSingleStepGetDeviceDesc(usb_host_ehci_instance_t *eh
     usb_host_device_instance_t *deviceInstance = (usb_host_device_instance_t *)deviceHandle;
     usb_host_transfer_t *transfer;
     uint8_t timeCount;
+    static uint8_t buffer[USB_HOST_EHCI_TEST_DESCRIPTOR_LENGTH];
     USB_HostEhciLock();
     /* disable periodic shedule */
     USB_HostEhciStopPeriodic(ehciInstance);
@@ -738,9 +739,8 @@ static void USB_HostEhciTestSingleStepGetDeviceDesc(usb_host_ehci_instance_t *eh
         return;
     }
 
-    getDescriptorParam.descriptorLength  = sizeof(usb_descriptor_device_t);
-    getDescriptorParam.descriptorLength  = 18;
-    getDescriptorParam.descriptorBuffer  = (uint8_t *)&deviceInstance->deviceDescriptor;
+    getDescriptorParam.descriptorLength  = USB_HOST_EHCI_TEST_DESCRIPTOR_LENGTH;
+    getDescriptorParam.descriptorBuffer  = buffer;
     getDescriptorParam.descriptorType    = USB_DESCRIPTOR_TYPE_DEVICE;
     getDescriptorParam.descriptorIndex   = 0;
     getDescriptorParam.languageId        = 0;

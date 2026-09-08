@@ -148,6 +148,7 @@ static void USB_HostIp3516HsTestSingleStepGetDeviceDesc(usb_host_ip3516hs_state_
     usb_host_device_instance_t *deviceInstance = (usb_host_device_instance_t *)deviceHandle;
     usb_host_transfer_t *transfer;
     uint8_t timeCount;
+    static uint8_t buffer[USB_HOST_IP3516HS_TEST_DESCRIPTOR_LENGTH];
 
     /* disable periodic shedule */
     usbHostState->usbRegBase->USBCMD &= ~(USB_HOST_IP3516HS_USBCMD_INT_EN_MASK | USB_HOST_IP3516HS_USBCMD_ISO_EN_MASK);
@@ -167,9 +168,8 @@ static void USB_HostIp3516HsTestSingleStepGetDeviceDesc(usb_host_ip3516hs_state_
         return;
     }
 
-    getDescriptorParam.descriptorLength  = sizeof(usb_descriptor_device_t);
-    getDescriptorParam.descriptorLength  = 18;
-    getDescriptorParam.descriptorBuffer  = (uint8_t *)&deviceInstance->deviceDescriptor;
+    getDescriptorParam.descriptorLength  = USB_HOST_IP3516HS_TEST_DESCRIPTOR_LENGTH;
+    getDescriptorParam.descriptorBuffer  = buffer;
     getDescriptorParam.descriptorType    = USB_DESCRIPTOR_TYPE_DEVICE;
     getDescriptorParam.descriptorIndex   = 0;
     getDescriptorParam.languageId        = 0;
