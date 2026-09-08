@@ -67,6 +67,7 @@ typedef struct _eth_adapter_frame_queue_struct
     uint32_t idx;
     uint32_t total_len;
     uint32_t valid_len;
+    uint32_t unit_len;
     eth_adapter_frame_buf_t *queue;
 } eth_adapter_frame_queue_t;
 
@@ -107,6 +108,7 @@ static inline eth_adapter_err_t ETH_ADAPTER_FrameQueueReset(eth_adapter_frame_qu
     ethFrameQueue->idx = 0U;
     ethFrameQueue->valid_len = 0U;
     ethFrameQueue->total_len = length;
+    ethFrameQueue->unit_len = bufferUnitLength;
     ethFrameQueue->queue = malloc(sizeof(eth_adapter_frame_buf_t) * length);
     if (ethFrameQueue->queue)
     {
@@ -185,6 +187,13 @@ static inline eth_adapter_err_t ETH_ADAPTER_FrameQueuePush(eth_adapter_frame_que
 
     if (ethFrameQueue->valid_len < ethFrameQueue->total_len)
     {
+        if (buffer->len > ethFrameQueue->unit_len)
+        {
+            ETH_ADAPTER_EXIT_CRITICAL();
+
+            return ETH_ADAPTER_ERROR;
+        }
+
         uint32_t target_idx = (ethFrameQueue->idx + ethFrameQueue->valid_len) % ethFrameQueue->total_len;
         memcpy(ethFrameQueue->queue[target_idx].payload, buffer->payload, buffer->len);
         ethFrameQueue->queue[target_idx].len = buffer->len;
