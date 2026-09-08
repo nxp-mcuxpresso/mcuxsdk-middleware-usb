@@ -480,7 +480,8 @@ usb_status_t USB_HostVideoStreamSetInterface(usb_host_class_handle classHandle,
             }
             if ((descUnion.common->bLength >= 3U) && (descUnion.common->bDescriptorType == USB_HOST_DESC_CS_INTERFACE))
             {
-                if (descUnion.common->bData[0] == USB_HOST_DESC_SUBTYPE_VS_INPUT_HEADER)
+                if ((descUnion.common->bLength >= sizeof(usb_host_video_stream_input_header_desc_t)) &&
+                    (descUnion.common->bData[0] == USB_HOST_DESC_SUBTYPE_VS_INPUT_HEADER))
                 {
                     temp                             = (void *)descUnion.bufr;
                     videoInstance->vsInputHeaderDesc = (usb_host_video_stream_input_header_desc_t *)temp;
@@ -1030,7 +1031,8 @@ usb_status_t USB_HostVideoStreamGetFrameDescriptor(
         return kStatus_USB_InvalidHandle;
     }
 
-    if ((formatDesc == NULL) || (formatDesc->bDescriptorType != USB_HOST_DESC_CS_INTERFACE))
+    if ((formatDesc == NULL) || (formatDesc->bDescriptorType != USB_HOST_DESC_CS_INTERFACE) ||
+        (formatDesc->bLength < sizeof(usb_host_video_stream_payload_format_common_desc_t)))
     {
         return kStatus_USB_InvalidParameter;
     }
