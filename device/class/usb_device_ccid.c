@@ -401,9 +401,9 @@ static usb_status_t USB_DeviceCcidBulkOut(usb_device_handle deviceHandle,
 
     /* Check the slot is valid or not */
     temp = (void *)&commonRequest->dwLength;
-    if ((ccidHandle->slots <= commonRequest->bSlot) ||
-        (event->length <
-         (USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(((uint8_t *)temp)) + USB_DEVICE_CCID_COMMAND_HEADER_LENGTH)))
+    if ((ccidHandle->slots <= commonRequest->bSlot) || (event->length < USB_DEVICE_CCID_COMMAND_HEADER_LENGTH) ||
+        ((event->length - USB_DEVICE_CCID_COMMAND_HEADER_LENGTH) <
+         USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(((uint8_t *)temp))))
     {
         if (ccidHandle->slots <= commonRequest->bSlot)
         {
