@@ -435,8 +435,10 @@ usb_status_t USB_DeviceMscUfiReadCommand(struct _usb_device_msc_struct *mscHandl
     usb_status_t status;
     uint32_t logicalBlockAddress = 0;
     uint32_t lbaTransferLength   = 0;
+    uint32_t totalLbaNumberSupports;
 
     ufi = &mscHandle->mscUfi;
+    totalLbaNumberSupports = mscHandle->luInformations[mscHandle->mscCbw->logicalUnitNumber].totalLbaNumberSupports;
 
     logicalBlockAddress = ((uint32_t)mscHandle->mscCbw->cbwcb[2] << 24);
     logicalBlockAddress |= ((uint32_t)mscHandle->mscCbw->cbwcb[3] << 16);
@@ -458,6 +460,26 @@ usb_status_t USB_DeviceMscUfiReadCommand(struct _usb_device_msc_struct *mscHandl
     else
     {
         /*no action*/
+    }
+
+    if ((lbaTransferLength != 0U) &&
+        ((logicalBlockAddress >= totalLbaNumberSupports) ||
+         (lbaTransferLength > (totalLbaNumberSupports - logicalBlockAddress))))
+    {
+        /* the requested LBA range extends past the end of the medium, reject before it reaches the storage callback */
+        ufi->thirteenCase.deviceExpectedDirection  = USB_IN;
+        ufi->thirteenCase.deviceExpectedDataLength = 0U;
+        ufi->thirteenCase.buffer                   = NULL;
+        ufi->thirteenCase.lbaSendRecvSelect        = 0U;
+
+        status = USB_DeviceMscUfiThirteenCasesCheck(mscHandle);
+        if (mscHandle->mscCsw->cswStatus != USB_DEVICE_MSC_PHASE_ERROR)
+        {
+            mscHandle->mscCsw->cswStatus           = USB_DEVICE_MSC_COMMAND_FAILED;
+            ufi->requestSense->senseKey            = USB_DEVICE_MSC_UFI_ILLEGAL_REQUEST;
+            ufi->requestSense->additionalSenseCode = USB_DEVICE_MSC_UFI_LBA_OUT_OF_RANGE;
+        }
+        return status;
     }
 
     ufi->thirteenCase.deviceExpectedDirection = USB_IN;
@@ -488,8 +510,10 @@ usb_status_t USB_DeviceMscUfiWriteCommand(struct _usb_device_msc_struct *mscHand
     usb_status_t status;
     uint32_t logicalBlockAddress = 0;
     uint32_t lbaTransferLength   = 0;
+    uint32_t totalLbaNumberSupports;
 
     ufi = &mscHandle->mscUfi;
+    totalLbaNumberSupports = mscHandle->luInformations[mscHandle->mscCbw->logicalUnitNumber].totalLbaNumberSupports;
 
     logicalBlockAddress = ((uint32_t)mscHandle->mscCbw->cbwcb[2] << 24);
     logicalBlockAddress |= ((uint32_t)mscHandle->mscCbw->cbwcb[3] << 16);
@@ -512,6 +536,27 @@ usb_status_t USB_DeviceMscUfiWriteCommand(struct _usb_device_msc_struct *mscHand
     {
         /*no action*/
     }
+
+    if ((lbaTransferLength != 0U) &&
+        ((logicalBlockAddress >= totalLbaNumberSupports) ||
+         (lbaTransferLength > (totalLbaNumberSupports - logicalBlockAddress))))
+    {
+        /* the requested LBA range extends past the end of the medium, reject before it reaches the storage callback */
+        ufi->thirteenCase.deviceExpectedDirection  = USB_OUT;
+        ufi->thirteenCase.deviceExpectedDataLength = 0U;
+        ufi->thirteenCase.buffer                   = NULL;
+        ufi->thirteenCase.lbaSendRecvSelect        = 0U;
+
+        status = USB_DeviceMscUfiThirteenCasesCheck(mscHandle);
+        if (mscHandle->mscCsw->cswStatus != USB_DEVICE_MSC_PHASE_ERROR)
+        {
+            mscHandle->mscCsw->cswStatus           = USB_DEVICE_MSC_COMMAND_FAILED;
+            ufi->requestSense->senseKey            = USB_DEVICE_MSC_UFI_ILLEGAL_REQUEST;
+            ufi->requestSense->additionalSenseCode = USB_DEVICE_MSC_UFI_LBA_OUT_OF_RANGE;
+        }
+        return status;
+    }
+
     ufi->thirteenCase.deviceExpectedDirection = USB_OUT;
     ufi->thirteenCase.deviceExpectedDataLength =
         mscHandle->luInformations[mscHandle->mscCbw->logicalUnitNumber].lengthOfEachLba * lbaTransferLength;

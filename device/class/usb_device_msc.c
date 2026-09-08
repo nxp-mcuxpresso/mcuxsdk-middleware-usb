@@ -1042,6 +1042,10 @@ usb_status_t USB_DeviceMscEvent(void *handle, uint32_t event, void *param)
             }
             else
             {
+                if (diskInformation.logicalUnitNumberSupported > USB_DEVICE_MSC_MAX_LUN)
+                {
+                    diskInformation.logicalUnitNumberSupported = USB_DEVICE_MSC_MAX_LUN;
+                }
                 mscHandle->logicalUnitNumber = (uint8_t)diskInformation.logicalUnitNumberSupported - 1U;
             }
             /*add for misra2.2*/
