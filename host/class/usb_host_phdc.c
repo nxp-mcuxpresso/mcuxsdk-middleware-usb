@@ -333,13 +333,22 @@ static void USB_HostPhdcBulkInPipeCallback(void *param, usb_host_transfer_t *tra
                 /* The received packet is meta-data message preamble */
                 temp                                                   = (void *)transfer->transferBuffer;
                 usb_host_phdc_metadata_preamble_t *metaDataMsgPreamble = (usb_host_phdc_metadata_preamble_t *)temp;
-                /* Meta-data message preamble signature checking */
-                for (uint8_t i = 0U; i < USB_HOST_PHDC_MESSAGE_PREAMBLE_SIGNATURE_SIZE; i++)
+                /* A short transfer smaller than the fixed preamble header cannot be a valid
+                 * preamble; avoid reading the signature bytes or the struct fields below it. */
+                if (transfer->transferSofar < (USB_HOST_PHDC_MESSAGE_PREAMBLE_SIGNATURE_SIZE + 3U))
                 {
-                    if (*(transfer->transferBuffer + i) != (uint8_t)metaDataMsgPreambleSignature[i])
+                    preambleSignatureChecking = 0U;
+                }
+                else
+                {
+                    /* Meta-data message preamble signature checking */
+                    for (uint8_t i = 0U; i < USB_HOST_PHDC_MESSAGE_PREAMBLE_SIGNATURE_SIZE; i++)
                     {
-                        preambleSignatureChecking = 0U;
-                        break;
+                        if (*(transfer->transferBuffer + i) != (uint8_t)metaDataMsgPreambleSignature[i])
+                        {
+                            preambleSignatureChecking = 0U;
+                            break;
+                        }
                     }
                 }
                 if (0U != preambleSignatureChecking)
@@ -895,6 +904,7 @@ usb_status_t USB_HostPhdcRecv(usb_host_class_handle classHandle,
     usb_host_pipe_handle pipe;
     usb_host_phdc_qos_descriptor_t *qosDesc = NULL;
     void *temp;
+    uint16_t qosDescLength = 0U;
     if (NULL == classHandle)
     {
         return kStatus_USB_InvalidHandle;
@@ -926,6 +936,7 @@ usb_status_t USB_HostPhdcRecv(usb_host_class_handle classHandle,
         /* get bulk in QoS descriptor */
         temp                 = (void *)phdcInstance->bulkInEndpointInformation.epExtension;
         qosDesc              = (usb_host_phdc_qos_descriptor_t *)temp;
+        qosDescLength        = phdcInstance->bulkInEndpointInformation.epExtensionLength;
         transfer->callbackFn = USB_HostPhdcBulkInPipeCallback;
     }
     else
@@ -933,7 +944,18 @@ usb_status_t USB_HostPhdcRecv(usb_host_class_handle classHandle,
         /* get interrupt in QoS descriptor */
         temp                 = (void *)phdcInstance->interruptInEndpointInformation.epExtension;
         qosDesc              = (usb_host_phdc_qos_descriptor_t *)temp;
+        qosDescLength        = phdcInstance->interruptInEndpointInformation.epExtensionLength;
         transfer->callbackFn = USB_HostPhdcInterruptPipeCallback;
+    }
+    /* The device may not have reported a (large enough) QoS descriptor after this endpoint;
+     * reject rather than dereferencing a NULL or undersized qosDesc. */
+    if ((NULL == qosDesc) || (qosDescLength < sizeof(usb_host_phdc_qos_descriptor_t)))
+    {
+#ifdef HOST_ECHO
+        usb_echo("USB_HostPhdcRecv, ERROR: missing QoS descriptor");
+#endif
+        (void)USB_HostFreeTransfer(phdcInstance->hostHandle, transfer);
+        return kStatus_USB_Error;
     }
     /* Latency and reliability checking */
     if (0U == (qos & qosDesc->bmLatencyReliability))
@@ -1028,6 +1050,17 @@ usb_status_t USB_HostPhdcSend(usb_host_class_handle classHandle,
             temp                                    = (void *)buffer;
             preamble                                = (usb_host_phdc_metadata_preamble_t *)temp;
             uint8_t latencyReliability              = preamble->bmLatencyReliability;
+            /* The device may not have reported a (large enough) QoS descriptor after this
+             * endpoint; reject rather than dereferencing a NULL or undersized qosDesc. */
+            if ((NULL == qosDesc) ||
+                (phdcInstance->bulkOutEndpointInformation.epExtensionLength < sizeof(usb_host_phdc_qos_descriptor_t)))
+            {
+                status = kStatus_USB_Error;
+#ifdef HOST_ECHO
+                usb_echo("USB_HostPhdcSend, Error: missing QoS descriptor");
+#endif
+                return status;
+            }
             /* Latency reliability validity checking */
             if ((latencyReliability != 0x02U) && /* Medium.Good latency, reliability bin */
                 (latencyReliability != 0x04U) && /* Medium.Better latency, reliability bin */
