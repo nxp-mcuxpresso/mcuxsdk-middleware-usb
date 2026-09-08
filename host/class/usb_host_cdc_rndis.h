@@ -304,7 +304,10 @@ typedef struct _rndis_packet_msg_struct
     uint32_t perPacketInfoLength;
     uint32_t vcHandle;
     uint32_t reserved;
-    uint8_t dataBuffer[RNDIS_FRAME_MAX_FRAMELEN];
+    /*! +1 so writing the NUL terminator at dataBuffer[dataLength] for a maximum-size
+     * (RNDIS_FRAME_MAX_FRAMELEN-byte) frame stays within this array's own declared bounds,
+     * instead of relying on padding reserved only in the enclosing RNDIS_DATA_MESSAGE buffer. */
+    uint8_t dataBuffer[RNDIS_FRAME_MAX_FRAMELEN + 1U];
 } rndis_packet_msg_struct_t;
 /*! @brief Define RNDIS state. See MSDN for details. */
 typedef enum _rndis_state_enum
