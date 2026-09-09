@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 - 2016, Freescale Semiconductor, Inc.
- * Copyright 2016,2019 - 2020 NXP
+ * Copyright 2016,2019 - 2020, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -525,8 +525,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             }
             break;
         }
-        ptr1.bufr += ptr1.common->bLength;
         length += ptr1.common->bLength;
+        ptr1.bufr += ptr1.common->bLength;
     }
 
     while (ep < interface_ptr->epCount)
@@ -605,7 +605,9 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
             ptr1.bufr += ptr1.common->bLength;
             length += descLength;
 
-            if ((length + 2U <= interface_ptr->interfaceExtensionLength) && (0x25U == ptr1.common->bDescriptorType))
+            if ((length + 2U <= interface_ptr->interfaceExtensionLength) && (0x25U == ptr1.common->bDescriptorType) &&
+                (ptr1.common->bLength >= 2U) &&
+                ((length + ptr1.common->bLength) <= interface_ptr->interfaceExtensionLength))
             {
                 interface_ptr->epList[ep].epExtension       = ptr1.bufr;
                 interface_ptr->epList[ep].epExtensionLength = ptr1.common->bLength;
@@ -667,8 +669,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                     /*no action*/
                 }
             }
-            ctrl_ptr.bufr += ctrl_ptr.common->bLength;
             length += ctrl_ptr.common->bLength;
+            ctrl_ptr.bufr += ctrl_ptr.common->bLength;
         }
         
         if (NULL != audioPtr->itDesc)
@@ -682,12 +684,13 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                 {
                     return kStatus_USB_Error;
                 }
-                if ((ctrl_ptr.common->bLength >= 9U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
+                if ((ctrl_ptr.common->bLength >= 3U) && (ctrl_ptr.common->bDescriptorType == 0x24U))
                 {
                     temp = (void *)ctrl_ptr.bufr;
                     if (ctrl_ptr.common->bData[0] == USB_AUDIO_DESC_SUBTYPE_CS_FEATURE)
                     {
-                        if ((audioPtr->fuDesc == NULL) && (ctrl_ptr.common->bData[2] == entity_id))
+                        if ((ctrl_ptr.common->bLength >= 5U) && (audioPtr->fuDesc == NULL) &&
+                            (ctrl_ptr.common->bData[2] == entity_id))
                         {
                             audioPtr->fuDesc = (void *)temp;
                             break;
@@ -698,7 +701,11 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                         if (audioPtr->fuDesc == NULL)
                         {
                             usb_audio_2_0_ctrl_mu_desc_t *mix_unit = (usb_audio_2_0_ctrl_mu_desc_t *)temp;
-                            for (uint8_t i = 0; (i < mix_unit->bNrInPins) && (i < 4U); i++)
+                            /* baSourceID[i] is at byte offset (5 + i); only read pins that fit within this
+                             * descriptor's own bLength as well as the fixed baSourceID[4] array. */
+                            for (uint8_t i = 0; (i < mix_unit->bNrInPins) && (i < 4U) &&
+                                                ((uint32_t)(5U + i) < ctrl_ptr.common->bLength);
+                                 i++)
                             {
                                 if (entity_id == mix_unit->baSourceID[i])
                                 {
@@ -714,8 +721,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                         /*no action*/
                     }
                 }
-                ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 length += ctrl_ptr.common->bLength;
+                ctrl_ptr.bufr += ctrl_ptr.common->bLength;
             }
             
             if (NULL != audioPtr->fuDesc)
@@ -746,8 +753,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 }
                 
                 if (AUDIO_DEVICE_VERSION_02 == audioPtr->deviceAudioVersion)
@@ -773,8 +780,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 }
                             }
                         }
-                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                         length += ctrl_ptr.common->bLength;
+                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     }
 
                 }
@@ -803,8 +810,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
 
                 }
 
@@ -833,8 +840,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 }
                 
                 if (AUDIO_DEVICE_VERSION_02 == audioPtr->deviceAudioVersion)
@@ -860,8 +867,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 }
                             }
                         }
-                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                         length += ctrl_ptr.common->bLength;
+                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     }
                 }
             }
@@ -906,8 +913,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                         /* no action */
                     }
                 }
-                ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 length += ctrl_ptr.common->bLength;
+                ctrl_ptr.bufr += ctrl_ptr.common->bLength;
 
             }
             
@@ -938,8 +945,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 }
                 
                 if (AUDIO_DEVICE_VERSION_02 == audioPtr->deviceAudioVersion)
@@ -970,8 +977,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 }
                             }
                         }
-                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                         length += ctrl_ptr.common->bLength;
+                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     }
                 }
                 
@@ -1001,8 +1008,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 }
 
                 if (NULL == audioPtr->fuDesc)
@@ -1035,8 +1042,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                             }
                         }
                     }
-                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     length += ctrl_ptr.common->bLength;
+                    ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                 }
                 
                 if (AUDIO_DEVICE_VERSION_02 == audioPtr->deviceAudioVersion)
@@ -1067,8 +1074,8 @@ usb_status_t USB_HostAudioStreamSetInterface(usb_host_class_handle classHandle,
                                 }
                             }
                         }
-                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                         length += ctrl_ptr.common->bLength;
+                        ctrl_ptr.bufr += ctrl_ptr.common->bLength;
                     }
                 } 
             }
@@ -1189,8 +1196,8 @@ usb_status_t USB_HostAudioControlSetInterface(usb_host_class_handle classHandle,
             break;
         }
 
-        ptr1.bufr += ptr1.common->bLength;
         length += ptr1.common->bLength;
+        ptr1.bufr += ptr1.common->bLength;
     }
     while (length < interface_ptr->interfaceExtensionLength)
     {
@@ -1213,8 +1220,8 @@ usb_status_t USB_HostAudioControlSetInterface(usb_host_class_handle classHandle,
                 /*no action*/
             }
         }
-        ptr1.bufr += ptr1.common->bLength;
         length += ptr1.common->bLength;
+        ptr1.bufr += ptr1.common->bLength;
     }
 
     if (alternateSetting == 0U)
