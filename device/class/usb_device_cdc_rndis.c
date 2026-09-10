@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 - 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 - 2017, 2019 NXP
+ * Copyright 2016 - 2017, 2019, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -169,6 +169,7 @@ usb_status_t USB_DeviceCdcRndisInit(class_handle_t classHandle,
     cdcRndisHandle->rndisDevMaxTxSize       = config->devMaxTxSize;
     cdcRndisHandle->rndisCallback           = config->rndisCallback;
     cdcRndisHandle->rndisCommand            = &s_rndisCommand[0];
+    cdcRndisHandle->rndisCommandLength      = 0U;
     cdcRndisHandle->responseData            = (uint8_t *)&s_responseData[0];
     cdcRndisHandle->statusMutex             = (osa_mutex_handle_t)&cdcRndisHandle->mutexBuffer[0];
     if (KOSA_StatusSuccess != OSA_MutexCreate((cdcRndisHandle->statusMutex)))
@@ -258,6 +259,17 @@ usb_status_t USB_DeviceCdcRndisMessageSet(usb_device_cdc_rndis_struct_t *handle,
     {
         return kStatus_USB_Error;
     }
+
+    /* The messageType field is the first 4 bytes; a shorter transfer cannot carry a valid message
+       header, so reject it before dereferencing the buffer as a uint32_t. */
+    if (*len < sizeof(uint32_t))
+    {
+        return kStatus_USB_Error;
+    }
+
+    /* Remember how many bytes the host actually sent so the SET handlers can bound host-supplied
+       offsets against the received data instead of the full s_rndisCommand buffer size. */
+    handle->rndisCommandLength = *len;
 
     temp        = (void *)*message;
     messageType = USB_LONG_TO_LITTLE_ENDIAN(*((uint32_t *)(temp)));
@@ -930,6 +942,8 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
     rndis_set_cmplt_struct_t *rndisSetCmplt;
     usb_device_cdc_rndis_request_param_struct_t reqParam;
     void *temp;
+    uint32_t receivedLength;
+    uint32_t messageLength;
 
     if (NULL == handle)
     {
@@ -937,6 +951,15 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
     }
     rndisSetMsg   = (rndis_set_msg_struct_t *)((void *)handle->rndisCommand);
     rndisSetCmplt = (rndis_set_cmplt_struct_t *)((void *)handle->responseData);
+
+    /* receivedLength is how many bytes the host actually placed in s_rndisCommand this time, capped
+       at the buffer size. It is only used to validate the declared messageLength below; the data
+       reads themselves are bounded by messageLength, which is what delimits this message. */
+    receivedLength = handle->rndisCommandLength;
+    if (receivedLength > RNDIS_MAX_EXPECTED_COMMAND_SIZE)
+    {
+        receivedLength = RNDIS_MAX_EXPECTED_COMMAND_SIZE;
+    }
 
     /* preparing for Byte 0-3 : MessageType*/
     rndisSetCmplt->messageType = USB_LONG_TO_LITTLE_ENDIAN(RNDIS_SET_CMPLT);
@@ -948,13 +971,21 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
     /* preparing for Byte 8-11 : RequestID*/
     rndisSetCmplt->requestID = rndisSetMsg->requestID;
 
+    /* messageLength is the message's own declared size and is what delimits its data, so it bounds
+       the data reads below. It is host-supplied, so each OID guard first rejects
+       messageLength > receivedLength; because || short-circuits, the later terms are only evaluated
+       once messageLength is known to be within the bytes actually received. Keep that term first.
+       messageLength is not byte-swapped by the caller, so correct it here. */
+    messageLength = USB_LONG_TO_LITTLE_ENDIAN(rndisSetMsg->messageLength);
+
     switch (rndisSetMsg->oid)
     {
         case NDIS_OID_GEN_CURRENT_PACKET_FILTER:
             /* Current packet filter (encoded) - Query and Set Mandatory - General Operational Characteristic*/
-            if ((rndisSetMsg->informationBufferLength != 4U) ||
+            if ((rndisSetMsg->informationBufferLength != 4U) || (messageLength > receivedLength) ||
+                (messageLength < (RNDIS_SET_MSG_DATA_OFFSET + sizeof(uint32_t))) ||
                 (rndisSetMsg->informationBufferOffset >
-                 (RNDIS_MAX_EXPECTED_COMMAND_SIZE - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint32_t))))
+                 (messageLength - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint32_t))))
             {
                 rndisSetCmplt->status = RNDIS_STATUS_INVALID_DATA;
             }
@@ -997,9 +1028,10 @@ usb_status_t USB_DeviceCdcRndisSetCommand(usb_device_cdc_rndis_struct_t *handle,
             break;
         case NDIS_OID_802_3_MULTICAST_LIST:
             /* Current multicast address list - Query and Set Mandatory - Ethernet Operational Characteristic*/
-            if ((rndisSetMsg->informationBufferLength != RNDIS_ETHER_ADDR_SIZE) ||
+            if ((rndisSetMsg->informationBufferLength != RNDIS_ETHER_ADDR_SIZE) || (messageLength > receivedLength) ||
+                (messageLength < (RNDIS_SET_MSG_DATA_OFFSET + sizeof(uint64_t))) ||
                 (rndisSetMsg->informationBufferOffset >
-                 (RNDIS_MAX_EXPECTED_COMMAND_SIZE - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint64_t))))
+                 (messageLength - RNDIS_SET_MSG_DATA_OFFSET - sizeof(uint64_t))))
             {
                 rndisSetCmplt->status = RNDIS_STATUS_INVALID_DATA;
             }
