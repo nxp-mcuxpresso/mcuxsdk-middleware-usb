@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 - 2016, Freescale Semiconductor, Inc.
- * Copyright 2016,2019 NXP
+ * Copyright 2016,2019, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -555,6 +555,7 @@ typedef struct _usb_device_cdc_rndis_struct
 {
     class_handle_t cdcAcmHandle;          /*!< USB CDC ACM class handle. */
     uint8_t *rndisCommand;                /*!< The pointer to the buffer of the RNDIS request. */
+    uint32_t rndisCommandLength;          /*!< The number of valid bytes the host actually sent in rndisCommand. */
     uint8_t *responseData;                /*!< The pointer to the buffer of the RNDIS response. */
     uint32_t rndisHostMaxTxSize;          /*!< The maximum transmit size in byte of the host. */
     uint32_t rndisDevMaxTxSize;           /*!< The maximum transmit size in byte of the device. */
