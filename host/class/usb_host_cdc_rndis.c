@@ -1,5 +1,5 @@
 /*
- * Copyright 2018, 2019 NXP
+ * Copyright 2018, 2019, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -40,6 +40,14 @@ usb_status_t USB_HostRndisInitMsg(usb_host_class_handle classHandle,
 
     rndis_init_msg_struct_t *message = (rndis_init_msg_struct_t *)temp;
 
+    if ((NULL == messageBuffer) || (messageBufferLength < sizeof(rndis_init_msg_struct_t)))
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        return kStatus_USB_InvalidParameter;
+    }
+
     message->messageType     = REMOTE_NDIS_INITIALIZE_MSG;
     message->messageLength   = sizeof(rndis_init_msg_struct_t);
     messageID                = messageID % 1024U;
@@ -64,6 +72,17 @@ usb_status_t USB_HostRndisQueryMsg(usb_host_class_handle classHandle,
 {
     void *temp                        = (void *)messageBuffer;
     rndis_query_msg_struct_t *message = (rndis_query_msg_struct_t *)temp;
+
+    /* The fixed header is written below, and the OID data is placed after it, so the caller's buffer
+       must at least hold the header. Checking this first also stops the
+       (messageBufferLength - RNDIS_QUERY_MSG_SIZE) subtraction below from wrapping. */
+    if ((NULL == messageBuffer) || (messageBufferLength < RNDIS_QUERY_MSG_SIZE))
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        return kStatus_USB_InvalidParameter;
+    }
 
     message->messageType             = REMOTE_NDIS_QUERY_MSG;
     message->messageLength           = sizeof(rndis_query_msg_struct_t) + informationLength;
@@ -100,6 +119,14 @@ usb_status_t USB_HostRndisHaltMsg(usb_host_class_handle classHandle,
     void *temp                       = (void *)messageBuffer;
     rndis_halt_msg_struct_t *message = (rndis_halt_msg_struct_t *)temp;
 
+    if ((NULL == messageBuffer) || (messageBufferLength < sizeof(rndis_halt_msg_struct_t)))
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        return kStatus_USB_InvalidParameter;
+    }
+
     message->messageType   = REMOTE_NDIS_HALT_MSG;
     message->messageLength = sizeof(rndis_halt_msg_struct_t);
     messageID              = messageID % 1024U;
@@ -121,6 +148,17 @@ usb_status_t USB_HostRndisSetMsg(usb_host_class_handle classHandle,
     void *temp                      = (void *)messageBuffer;
     rndis_set_msg_struct_t *message = (rndis_set_msg_struct_t *)temp;
 
+    /* The fixed header is written below, and the OID data is placed after it, so the caller's buffer
+       must at least hold the header. Checking this first also stops the
+       (messageBufferLength - RNDIS_SET_MSG_SIZE) subtraction below from wrapping. */
+    if ((NULL == messageBuffer) || (messageBufferLength < RNDIS_SET_MSG_SIZE))
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        return kStatus_USB_InvalidParameter;
+    }
+
     message->messageType             = REMOTE_NDIS_SET_MSG;
     message->messageLength           = sizeof(rndis_set_msg_struct_t) + informationLength;
     messageID                        = messageID % 1024U;
@@ -136,6 +174,10 @@ usb_status_t USB_HostRndisSetMsg(usb_host_class_handle classHandle,
 #ifdef HOST_ECHO
             usb_echo("buffer is not enough\r\n");
 #endif
+            /* messageLength must be clamped together with informationBufferLength: it is passed as
+               the transfer length below, so leaving the unclamped value would send bytes from past
+               the end of messageBuffer to the device. */
+            message->messageLength           = messageBufferLength;
             message->informationBufferLength = messageBufferLength - RNDIS_SET_MSG_SIZE;
         }
         /*fixed misra 18.1*/
@@ -154,7 +196,15 @@ usb_status_t USB_HostRndisResetMsg(usb_host_class_handle classHandle,
     void *temp                        = (void *)messageBuffer;
     rndis_reset_msg_struct_t *message = (rndis_reset_msg_struct_t *)temp;
 
-    message->messageType   = REMOTE_NDIS_QUERY_MSG;
+    if ((NULL == messageBuffer) || (messageBufferLength < sizeof(rndis_reset_msg_struct_t)))
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        return kStatus_USB_InvalidParameter;
+    }
+
+    message->messageType   = REMOTE_NDIS_RESET_MSG;
     message->messageLength = sizeof(rndis_reset_msg_struct_t);
     message->Reserved      = 0U;
 
@@ -176,7 +226,29 @@ usb_status_t USB_HostRndisSendDataMsg(usb_host_class_handle classHandle,
     void *temp                         = (void *)messageBuffer;
     rndis_packet_msg_struct_t *message = (rndis_packet_msg_struct_t *)temp;
 
-    message->messageType   = REMOTE_NDIS_PACKET_MSG;
+    /* Callers pass messageBufferLength as the maximum payload the buffer can carry after the fixed
+       header (the lwIP port passes RNDIS_FRAME_MAX_FRAMELEN for a
+       RNDIS_FRAME_MAX_FRAMELEN + RNDIS_DAT_MSG_HEADER_SIZE + 1 byte buffer), so bound the payload by
+       it as well as by RNDIS_FRAME_MAX_FRAMELEN. For the existing callers the two are equal, so this
+       does not truncate anything they send. */
+    if (dataLength > RNDIS_FRAME_MAX_FRAMELEN)
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        dataLength = RNDIS_FRAME_MAX_FRAMELEN;
+    }
+    if (dataLength > messageBufferLength)
+    {
+#ifdef HOST_ECHO
+        usb_echo("buffer is not enough\r\n");
+#endif
+        dataLength = messageBufferLength;
+    }
+
+    message->messageType = REMOTE_NDIS_PACKET_MSG;
+    /* Derive messageLength from the bounded dataLength; it is the transfer length below, so computing
+       it from the unbounded value would send bytes from past the end of messageBuffer. */
     message->messageLength = dataLength + RNDIS_DAT_MSG_HEADER_SIZE;
 
     message->dataOffset          = 36U;
@@ -188,15 +260,13 @@ usb_status_t USB_HostRndisSendDataMsg(usb_host_class_handle classHandle,
     message->perPacketInfoLength = perPacketInfoLength;
     message->vcHandle            = 0U;
     message->reserved            = 0U;
-    if (dataLength > RNDIS_FRAME_MAX_FRAMELEN)
+    temp                         = (void *)&message->dataBuffer[0];
+    /* Callers may already have assembled the frame directly in message->dataBuffer, in which case
+       source and destination are the same object and memcpy() would be undefined. */
+    if (temp != (void *)dataBuffer)
     {
-#ifdef HOST_ECHO
-        usb_echo("buffer is not enough\r\n");
-#endif
-        message->dataLength = RNDIS_FRAME_MAX_FRAMELEN;
+        (void)memcpy(temp, (void *)dataBuffer, message->dataLength);
     }
-    temp = (void *)&message->dataBuffer[0];
-    (void)memcpy(temp, (void *)dataBuffer, message->dataLength);
 
     return USB_HostCdcDataSend(classHandle, messageBuffer, message->messageLength, callbackFn, callbackParam);
 }
