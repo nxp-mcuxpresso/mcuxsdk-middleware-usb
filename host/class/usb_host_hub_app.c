@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016,2019 NXP
+ * Copyright 2016,2019, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -40,36 +40,45 @@ static void USB_HostHubGetInterruptStatus(usb_host_hub_instance_t *hubInstance);
  * @brief hub process state machine. hub is enable after the state machine.
  *
  * @param hubInstance  hub instance pointer.
+ * @param dataLength   number of bytes the hub actually returned in the control transfer that led here, 0 when this
+ *                     call is not the completion of a control transfer. The states that parse a response buffer
+ *                     validate it against this before reading, so a hub returning a short response cannot make them
+ *                     act on bytes left over from an earlier transfer.
  */
-static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance);
+static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance, uint32_t dataLength);
 
 /*!
  * @brief hub port attach process state machine. one device is attached to the port after the state machine.
  *
  * @param hubInstance  hub instance pointer.
+ * @param dataLength   number of bytes the hub actually returned, see USB_HostHubProcess.
  */
-static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance);
+static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance, uint32_t dataLength);
 
 /*!
  * @brief hub port detach process state machine. one device is detached from the port after the state machine.
  *
  * @param hubInstance  hub instance pointer.
+ * @param dataLength   number of bytes the hub actually returned, see USB_HostHubProcess.
  */
-static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance);
+static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance, uint32_t dataLength);
 
 /*!
  * @brief hub port process.
  *
  * @param hubInstance  hub instance pointer.
+ * @param dataLength   number of bytes the hub actually returned, see USB_HostHubProcess.
  */
-static void USB_HostHubProcessPort(usb_host_hub_instance_t *hubInstance);
+static void USB_HostHubProcessPort(usb_host_hub_instance_t *hubInstance, uint32_t dataLength);
 
 /*!
  * @brief hub interrupt in data process.
  *
  * @param hubInstance  hub instance pointer.
  */
-static void USB_HostHubProcessData(usb_host_hub_global_t *hubGlobal, usb_host_hub_instance_t *hubInstance);
+static void USB_HostHubProcessData(usb_host_hub_global_t *hubGlobal,
+                                   usb_host_hub_instance_t *hubInstance,
+                                   uint32_t dataLength);
 
 /*!
  * @brief hub control pipe transfer callback.
@@ -178,7 +187,7 @@ static void USB_HostHubGetInterruptStatus(usb_host_hub_instance_t *hubInstance)
     }
 }
 
-static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
+static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance, uint32_t dataLength)
 {
     uint8_t needPrimeInterrupt = 0; /* need to prime interrupt in transfer (0 - don't need; 1 - need) */
     uint8_t processSuccess     = 0; /* the code execute successfully (0 - fail; 1 - success) */
@@ -187,6 +196,7 @@ static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
     void *temp;
     usb_host_hub_app_status_t appStatus;
     uint16_t portNum;
+    uint8_t portCount;
 
     appStatus = (usb_host_hub_app_status_t)hubInstance->hubStatus;
     switch (appStatus)
@@ -220,6 +230,20 @@ static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
             temp          = (void *)&hubInstance->hubDescriptor[0];
             hubDescriptor = (usb_host_hub_descriptor_t *)temp;
 
+            /* bnrports and whubcharacteristics are read below, so the hub must actually have returned the fixed
+               7-byte part of the descriptor. A shorter response would otherwise be parsed out of whatever the
+               buffer happened to hold. Also require the descriptor's own blength to cover those fields and the
+               type to be the HUB descriptor type, so a mis-declared descriptor is rejected rather than trusted. */
+            if ((dataLength < USB_HOST_HUB_DESCRIPTOR_FIXED_LENGTH) ||
+                (hubDescriptor->blength < USB_HOST_HUB_DESCRIPTOR_FIXED_LENGTH) ||
+                (hubDescriptor->bdescriptortype != USB_HOST_HUB_DESCRIPTOR_TYPE))
+            {
+#ifdef HOST_ECHO
+                usb_echo("hub descriptor error\r\n");
+#endif
+                break;
+            }
+
             /* get the hub think time */
             (void)USB_HostHelperGetPeripheralInformation(hubInstance->deviceHandle, (uint32_t)kUSB_HostGetHubThinkTime,
                                                          &tmp);
@@ -237,14 +261,17 @@ static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
             hubInstance->totalThinktime += (uint16_t)tmp;
 
             /* get hub port number */
-            hubInstance->portCount = hubDescriptor->bnrports;
-            if (hubInstance->portCount > USB_HOST_HUB_MAX_PORT)
+            portCount = hubDescriptor->bnrports;
+            /* Validate before storing: portCount sizes the portList allocation and bounds every later port loop,
+               so an out-of-range device-supplied value must not be recorded in the instance at all. */
+            if ((portCount == 0U) || (portCount > USB_HOST_HUB_MAX_PORT))
             {
 #ifdef HOST_ECHO
                 usb_echo("port number is bigger than USB_HOST_HUB_MAX_PORT\r\n");
 #endif
-                return;
+                break;
             }
+            hubInstance->portCount = portCount;
 
             hubInstance->hubStatus = (uint8_t)kHubRunSetPortPower; /* update as next state */
             /* get hub descriptor */
@@ -320,8 +347,15 @@ static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
             break;
 
         case kHubRunGetStatusDone: /* process hub status change */
-            tmp                    = USB_SHORT_FROM_LITTLE_ENDIAN_ADDRESS((&hubInstance->hubStatusBuffer[2]));
             hubInstance->hubStatus = (uint8_t)kHubRunIdle;
+            /* wHubStatus/wHubChange is a fixed 4-byte structure and the change bits are read from offset 2, so a
+               shorter response cannot be parsed; treat it as no change rather than acting on stale buffer bytes. */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                needPrimeInterrupt = 1U;
+                break;
+            }
+            tmp = USB_SHORT_FROM_LITTLE_ENDIAN_ADDRESS((&hubInstance->hubStatusBuffer[2]));
             if (0U != ((1UL << C_HUB_LOCAL_POWER) & tmp)) /* C_HUB_LOCAL_POWER */
             {
                 if (USB_HostHubClearFeature(hubInstance, C_HUB_LOCAL_POWER, USB_HostHubControlCallback, hubInstance) ==
@@ -380,7 +414,7 @@ static void USB_HostHubProcess(usb_host_hub_instance_t *hubInstance)
     }
 }
 
-static void USB_HostHubProcessPort(usb_host_hub_instance_t *hubInstance)
+static void USB_HostHubProcessPort(usb_host_hub_instance_t *hubInstance, uint32_t dataLength)
 {
     usb_host_hub_port_instance_t *portInstance = NULL;
 
@@ -388,19 +422,24 @@ static void USB_HostHubProcessPort(usb_host_hub_instance_t *hubInstance)
     {
         return;
     }
+    /* portList is allocated only once portCount has been validated; without it there is no port state to run. */
+    if (NULL == hubInstance->portList)
+    {
+        return;
+    }
     portInstance = &hubInstance->portList[hubInstance->portProcess - 1U];
     /* for device attach */
     if (portInstance->deviceHandle == NULL)
     {
-        USB_HostHubProcessPortAttach(hubInstance);
+        USB_HostHubProcessPortAttach(hubInstance, dataLength);
     }
     else /* for device detach */
     {
-        USB_HostHubProcessPortDetach(hubInstance);
+        USB_HostHubProcessPortDetach(hubInstance, dataLength);
     }
 }
 
-static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
+static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance, uint32_t dataLength)
 {
     usb_host_hub_port_instance_t *portInstance = NULL;
     uint8_t processSuccess                     = 0U;
@@ -409,7 +448,7 @@ static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
     uint32_t infoValue               = 0U;
     usb_host_hub_global_t *hubGlobal = USB_HostHubGetHubList(hubInstance->hostHandle);
     usb_host_port_app_status_t appStatus;
-    if ((hubGlobal == NULL) || (hubInstance->portProcess < 1U))
+    if ((hubGlobal == NULL) || (hubInstance->portProcess < 1U) || (NULL == hubInstance->portList))
     {
         return;
     }
@@ -434,6 +473,15 @@ static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
 
         case kPortRunCheckCPortConnection: /* (2) check port status, and clear the status bits */
             feature    = 0U;
+            /* wPortStatus/wPortChange is a fixed 4-byte structure. portStatusBuffer is shared by every port and
+               every request, so without this check a hub returning a short GET_PORT_STATUS response would be
+               parsed from the bytes an earlier request left behind. Bailing out here reaches the tail below, which
+               resets the port to kPortRunWaitPortChange and re-primes the interrupt transfer, so the port is
+               retried rather than acted on with stale status bits. */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS((hubInstance->portStatusBuffer));
             if (0U != ((1UL << C_PORT_CONNECTION) & specStatus))
             {
@@ -514,6 +562,11 @@ static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
             break;
 
         case kPortRunCheckPortConnection: /* (4) check PORT_CONNECTION bit */
+            /* see the note in kPortRunCheckCPortConnection */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(hubInstance->portStatusBuffer);
             if (0U != ((1UL << PORT_CONNECTION) & specStatus))
             {
@@ -551,6 +604,12 @@ static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
             break;
 
         case KPortRunCheckCPortReset: /* (7) check C_PORT_RESET and clear C_PORT_RESET */
+            /* see the note in kPortRunCheckCPortConnection. This state also derives the attached device's speed
+               from these bits, so stale ones would enumerate the device at the wrong speed. */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(hubInstance->portStatusBuffer);
             if (0U != ((1UL << C_PORT_RESET) & specStatus))
             {
@@ -626,7 +685,7 @@ static void USB_HostHubProcessPortAttach(usb_host_hub_instance_t *hubInstance)
     }
 }
 
-static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
+static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance, uint32_t dataLength)
 {
     usb_host_hub_port_instance_t *portInstance = NULL;
 #if ((defined(USB_HOST_CONFIG_LOW_POWER_MODE)) && (USB_HOST_CONFIG_LOW_POWER_MODE > 0U))
@@ -636,7 +695,7 @@ static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
     uint32_t specStatus;
     usb_host_port_app_status_t appStatus;
     usb_host_hub_global_t *hubGlobal = USB_HostHubGetHubList(hubInstance->hostHandle);
-    if ((hubGlobal == NULL) || (hubInstance->portProcess < 1U))
+    if ((hubGlobal == NULL) || (hubInstance->portProcess < 1U) || (NULL == hubInstance->portList))
     {
         return;
     }
@@ -663,6 +722,11 @@ static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
             break;
 
         case kPortRunCheckPortDetach: /* (2) check port status bits */
+            /* see the note in kPortRunCheckCPortConnection */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus               = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(hubInstance->portStatusBuffer);
             portInstance->portStatus = (uint8_t)kPortRunGetConnectionBit;
             if (0U != ((1UL << C_PORT_CONNECTION) & specStatus)) /* C_PORT_CONNECTION */
@@ -719,6 +783,12 @@ static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
             break;
 
         case kPortRunCheckConnectionBit: /* (4) check port connection bit */
+            /* see the note in kPortRunCheckCPortConnection. This state decides whether the port's device is gone,
+               so stale bits would either drop a still-attached device or keep a detached one. */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(hubInstance->portStatusBuffer);
             if (0U != ((1UL << PORT_CONNECTION) & specStatus)) /* PORT_CONNECTION */
             {
@@ -751,6 +821,11 @@ static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
             }
             break;
         case kPortRunCheckPortSuspend:
+            /* see the note in kPortRunCheckCPortConnection */
+            if (dataLength < USB_HOST_HUB_STATUS_LENGTH)
+            {
+                break;
+            }
             specStatus = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(hubInstance->portStatusBuffer);
             if (0U != ((1UL << PORT_SUSPEND) & specStatus))
             {
@@ -783,14 +858,31 @@ static void USB_HostHubProcessPortDetach(usb_host_hub_instance_t *hubInstance)
     }
 }
 
-static void USB_HostHubProcessData(usb_host_hub_global_t *hubGlobal, usb_host_hub_instance_t *hubInstance)
+static void USB_HostHubProcessData(usb_host_hub_global_t *hubGlobal,
+                                   usb_host_hub_instance_t *hubInstance,
+                                   uint32_t dataLength)
 {
     uint8_t needPrimeInterrupt = 1U;
     uint8_t portIndex;
+    uint32_t bitmapLength;
+
+    /* The status change bitmap carries one bit per port plus one for the hub itself, so it is
+       (portCount >> 3) + 1 bytes, which is what USB_HostHubGetInterruptStatus asks for. A hub returning fewer bytes
+       leaves the rest of hubBitmapBuffer holding the previous transfer's bits, which would raise status changes for
+       ports the hub did not report. Only walk the bits the hub actually sent. */
+    bitmapLength = ((uint32_t)hubInstance->portCount >> 3U) + 1U;
+    if (dataLength < bitmapLength)
+    {
+        bitmapLength = dataLength;
+    }
 
     /* process the port which status change */
     for (portIndex = 0U; portIndex <= hubInstance->portCount; ++portIndex)
     {
+        if (((uint32_t)portIndex >> 3U) >= bitmapLength)
+        {
+            break;
+        }
         if (0U != ((0x01U << (portIndex & 0x07U)) & (hubInstance->hubBitmapBuffer[portIndex >> 3U])))
         {
             if (portIndex == 0U) /* hub status change */
@@ -826,7 +918,9 @@ static void USB_HostHubProcessData(usb_host_hub_global_t *hubGlobal, usb_host_hu
                         hubGlobal->hubProcess    = hubInstance;
                         hubInstance->portProcess = portIndex;
                         needPrimeInterrupt       = 0U;
-                        USB_HostHubProcessPort(hubInstance);
+                        /* This is the interrupt-in status-change bitmap, not a control response, so there is no
+                           port status data to parse; pass 0 so any state that would parse one is rejected. */
+                        USB_HostHubProcessPort(hubInstance, 0U);
                     }
                     break; /* process the port change in turn */
                 }
@@ -866,12 +960,12 @@ static void USB_HostHubControlCallback(void *param, uint8_t *data, uint32_t data
     if (hubInstance->primeStatus == (uint8_t)kPrimeHubControl) /* hub related control transfer */
     {
         hubInstance->primeStatus = (uint8_t)kPrimeNone;
-        USB_HostHubProcess(hubInstance);
+        USB_HostHubProcess(hubInstance, data_len);
     }
     else if (hubInstance->primeStatus == (uint8_t)kPrimePortControl) /* hub's port related control transfer */
     {
         hubInstance->primeStatus = (uint8_t)kPrimeNone;
-        USB_HostHubProcessPort(hubInstance);
+        USB_HostHubProcessPort(hubInstance, data_len);
     }
     else
     {
@@ -1145,7 +1239,7 @@ void USB_HostHubInterruptInCallback(void *param, uint8_t *data, uint32_t data_le
     }
     else
     {
-        USB_HostHubProcessData(hubGlobal, hubInstance); /* process the interrupt data */
+        USB_HostHubProcessData(hubGlobal, hubInstance, data_len); /* process the interrupt data */
     }
 }
 
@@ -1255,6 +1349,14 @@ usb_status_t USB_HostHubDeviceEvent(usb_host_handle hostHandle,
                 status      = USB_HostHubInit(s_HubDeviceHandle, &hubClassHandle);
                 hubInstance = (usb_host_hub_instance_t *)hubClassHandle;
 
+                /* USB_HostHubInit leaves hubClassHandle untouched when it cannot allocate the instance, so there is
+                   nothing to link into the list; dereferencing it would write through a NULL pointer. */
+                if ((status != kStatus_USB_Success) || (NULL == hubInstance))
+                {
+                    status = kStatus_USB_Error;
+                    break;
+                }
+
                 /* link hub instance to list */
                 if (USB_HostHubLockMutexCheck())
                 {
@@ -1276,15 +1378,12 @@ usb_status_t USB_HostHubDeviceEvent(usb_host_handle hostHandle,
                 }
 #endif
                 /* set hub instance's interface */
-                if (status == kStatus_USB_Success)
+                hubInstance->primeStatus = (uint8_t)kPrimeHubControl;
+                hubInstance->hubStatus   = (uint8_t)kHubRunWaitSetInterface;
+                if (USB_HostHubSetInterface(hubClassHandle, s_HubInterfaceHandle, 0, USB_HostHubControlCallback,
+                                            hubInstance) != kStatus_USB_Success)
                 {
-                    hubInstance->primeStatus = (uint8_t)kPrimeHubControl;
-                    hubInstance->hubStatus   = (uint8_t)kHubRunWaitSetInterface;
-                    if (USB_HostHubSetInterface(hubClassHandle, s_HubInterfaceHandle, 0, USB_HostHubControlCallback,
-                                                hubInstance) != kStatus_USB_Success)
-                    {
-                        hubInstance->hubStatus = (uint8_t)kHubRunInvalid;
-                    }
+                    hubInstance->hubStatus = (uint8_t)kHubRunInvalid;
                 }
             }
             break;
@@ -1299,7 +1398,15 @@ usb_status_t USB_HostHubDeviceEvent(usb_host_handle hostHandle,
                 (void)USB_HostHubLock();
             }
             prevInstance = hubGlobal->hubList;
-            if (prevInstance->deviceHandle == deviceHandle)
+            /* The detach event is delivered for any device that declares a hub-class interface, including one this
+               driver never accepted - kUSB_HostEventAttach rejects a hub with a non-zero subclass or deeper than 5
+               levels, and no instance is created for it. The list is then empty and there is nothing to unlink, so
+               do not dereference it. */
+            if (NULL == prevInstance)
+            {
+                hubInstance = NULL;
+            }
+            else if (prevInstance->deviceHandle == deviceHandle)
             {
                 hubInstance        = prevInstance;
                 hubGlobal->hubList = prevInstance->next;
@@ -1408,6 +1515,12 @@ usb_status_t USB_HostHubRemovePort(usb_host_handle hostHandle, uint8_t hubNumber
     /* set port's status as default, and reset port */
     if (hubInstance != NULL)
     {
+        /* portNumber indexes portList, which holds portCount entries and only exists once portCount has been
+           validated, so bound it before dereferencing rather than trusting the caller's port number. */
+        if ((NULL == hubInstance->portList) || (portNumber < 1U) || (portNumber > hubInstance->portCount))
+        {
+            return kStatus_USB_Error;
+        }
         hubInstance->portList[portNumber - 1U].deviceHandle = NULL;
         hubInstance->portList[portNumber - 1U].portStatus   = (uint8_t)kPortRunInvalid;
         if (hubInstance->portProcess == portNumber)

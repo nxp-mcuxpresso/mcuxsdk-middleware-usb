@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
+ * Copyright 2016, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -63,6 +63,13 @@ Software*/
 #define USB_HOST_HUB_DESCRIPTOR_CHARACTERISTICS_THINK_TIME_MASK (0x60U)
 /*! @brief Get HUB think time value */
 #define USB_HOST_HUB_DESCRIPTOR_CHARACTERISTICS_THINK_TIME_SHIFT (5U)
+
+/*! @brief HUB descriptor type, see Table 11-13 in the usb2.0 specification */
+#define USB_HOST_HUB_DESCRIPTOR_TYPE (0x29U)
+/*! @brief Number of bytes in the fixed part of the HUB descriptor, up to and including bhubcontrcurrent */
+#define USB_HOST_HUB_DESCRIPTOR_FIXED_LENGTH (7U)
+/*! @brief Number of bytes in the HUB/port status response: wStatus followed by wChange */
+#define USB_HOST_HUB_STATUS_LENGTH (4U)
 
 /*******************************************************************************
  * Prototypes
