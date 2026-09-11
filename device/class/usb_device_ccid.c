@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015, Freescale Semiconductor, Inc.
- * Copyright 2016 NXP
+ * Copyright 2016, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -399,11 +399,16 @@ static usb_status_t USB_DeviceCcidBulkOut(usb_device_handle deviceHandle,
     temp          = (void *)event->buffer;
     commonRequest = (usb_device_ccid_common_command_t *)temp;
 
+    /* Nothing shorter than the command header can carry bMessageType/bSlot/bSeq/dwLength, so reject
+       it before any of those fields is read. */
+    if (event->length < USB_DEVICE_CCID_COMMAND_HEADER_LENGTH)
+    {
+        response_error = USB_DEVICE_CCID_SLOT_ERROR_BAD_LENGTH;
+    }
     /* Check the slot is valid or not */
-    temp = (void *)&commonRequest->dwLength;
-    if ((ccidHandle->slots <= commonRequest->bSlot) || (event->length < USB_DEVICE_CCID_COMMAND_HEADER_LENGTH) ||
-        ((event->length - USB_DEVICE_CCID_COMMAND_HEADER_LENGTH) <
-         USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(((uint8_t *)temp))))
+    else if ((ccidHandle->slots <= commonRequest->bSlot) ||
+             ((event->length - USB_DEVICE_CCID_COMMAND_HEADER_LENGTH) <
+              USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(((uint8_t *)((void *)&commonRequest->dwLength)))))
     {
         if (ccidHandle->slots <= commonRequest->bSlot)
         {
