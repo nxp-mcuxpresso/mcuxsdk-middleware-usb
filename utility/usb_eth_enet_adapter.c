@@ -1,5 +1,5 @@
 /**
- * Copyright 2024 - 2025 NXP
+ * Copyright 2024 - 2025, 2026 NXP
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -320,6 +320,21 @@ eth_adapter_err_t ETH_ADAPTER_RecvFrame(eth_adapter_frame_buf_t *buffer, uint32_
     /* Get the received frame size firstly. */
     status_t status = ENET_GetRxFrameSize(&enetHandle, &buffer->len, 0);
 
+    if (status != kStatus_Success)
+    {
+        /* buffer->len is only meaningful when the size query succeeded. */
+        if (status == kStatus_ENET_RxFrameError)
+        {
+            /* Update the received buffer when a error frame is received. */
+            (void)ENET_ReadFrame(BOARD_Enet, &enetHandle, NULL, 0, 0, NULL);
+
+            return ETH_ADAPTER_ERROR;
+        }
+        buffer->len = 0U;
+
+        return ETH_ADAPTER_OK;
+    }
+
     if (buffer->len != 0)
     {
         /* Allocate memory here with the size of "length" */
@@ -342,7 +357,11 @@ eth_adapter_err_t ETH_ADAPTER_RecvFrame(eth_adapter_frame_buf_t *buffer, uint32_
             bool forwardUp = false;
             if (ETH_ADAPTER_IdentifyDstFrameType(buffer, &type) != ETH_ADAPTER_OK)
             {
-                return ETH_ADAPTER_ERROR;
+                /* Runt or otherwise unclassifiable frame: drop it and keep the queue running rather
+                 * than aborting the whole receive loop. */
+                buffer->len = 0U;
+
+                return ETH_ADAPTER_OK;
             }
             else
             {
@@ -381,13 +400,6 @@ eth_adapter_err_t ETH_ADAPTER_RecvFrame(eth_adapter_frame_buf_t *buffer, uint32_
 
             /* Call stack input API to deliver the data to stack */
         }
-    }
-    else if (status == kStatus_ENET_RxFrameError)
-    {
-        /* Update the received buffer when a error frame is received. */
-        (void)ENET_ReadFrame(BOARD_Enet, &enetHandle, NULL, 0, 0, NULL);
-
-        return ETH_ADAPTER_ERROR;
     }
 
     return ETH_ADAPTER_OK;
@@ -456,6 +468,13 @@ eth_adapter_err_t ETH_ADAPTER_RecvFrameQueue(void)
 eth_adapter_err_t ETH_ADAPTER_IdentifyDstFrameType(eth_adapter_frame_buf_t *buffer, eth_adapter_dst_frame_type_t *type)
 {
     if (!type)
+    {
+        return ETH_ADAPTER_INVALID;
+    }
+
+    /* The destination MAC is the first 6 bytes of an Ethernet frame; a shorter frame does not have
+     * a MAC and reading 6 bytes anyway walks past the payload. */
+    if ((!buffer) || (buffer->len < 6U))
     {
         return ETH_ADAPTER_INVALID;
     }
