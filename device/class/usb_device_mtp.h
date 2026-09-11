@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 NXP
+ * Copyright 2020, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -30,6 +30,12 @@
 #define USB_DEVICE_MTP_MINIMUM_CONTAINER_LENGTH (12U)
 /*! @brief Command container length */
 #define USB_DEVICE_MTP_COMMAND_LENGTH (32U)
+
+/*! @brief Number of parameter slots in usb_device_mtp_container_t::param and in the response
+ * structure usb_device_mtp_response_struct_t (param1..param5). */
+#define USB_DEVICE_MTP_MAX_PARAM_NUMBER (5U)
+/*! @brief Number of parameter slots in usb_device_mtp_event_container_t (param1..param3). */
+#define USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER (3U)
 
 /*! @brief Default invalid value, parameter in the operation or maximum container length */
 #define USB_DEVICE_MTP_MAX_UINT32_VAL (0xFFFFFFFFU)
@@ -119,7 +125,7 @@ typedef struct _usb_device_mtp_container
     uint16_t containerType;
     uint16_t code;
     uint32_t transactionID;
-    uint32_t param[5];
+    uint32_t param[USB_DEVICE_MTP_MAX_PARAM_NUMBER];
 } usb_device_mtp_container_t;
 
 /*! @brief MTP asynchronous event interrupt data format.
@@ -183,7 +189,8 @@ typedef struct _usb_device_mtp_cmd_data_struct
     uint64_t totalSize; /*!< [IN] In total how many bytes need to be sent. */
                         /*!< [OUT] In total how many bytes need to be received. */
     uint64_t curPos;    /*!< [OUT] The number of bytes has been transferred. */
-    uint32_t param[5];  /*!< [OUT] In the command phase, used to save command parameter. */
+    uint32_t param[USB_DEVICE_MTP_MAX_PARAM_NUMBER];
+                        /*!< [OUT] In the command phase, used to save command parameter. */
                         /*!< [IN] In the repsonse phase, used to save response parameter. */
     uint16_t code;      /*!< [IN] response code */
     uint16_t curPhase;  /*!< [OUT] In the command phase, equals to USB_DEVICE_MTP_PHASE_COMMAND. */

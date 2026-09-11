@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 NXP
+ * Copyright 2020, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -195,6 +195,13 @@ usb_status_t USB_DeviceMtpPrimeResponse(usb_device_mtp_struct_t *mtpHandle,
                                         uint8_t respParamSize)
 {
     mtpHandle->mtpState = USB_DEVICE_MTP_STATE_RESPONSE;
+
+    /* The container only has USB_DEVICE_MTP_MAX_PARAM_NUMBER parameter slots, and respParam points at
+       a response struct with the same number. Clamp before the loop below indexes either of them. */
+    if (respParamSize > USB_DEVICE_MTP_MAX_PARAM_NUMBER)
+    {
+        respParamSize = USB_DEVICE_MTP_MAX_PARAM_NUMBER;
+    }
 
     mtpHandle->mtpContainer->containerLength = USB_DEVICE_MTP_MINIMUM_CONTAINER_LENGTH + respParamSize * 4U;
     mtpHandle->mtpContainer->containerType   = USB_DEVICE_MTP_CONTAINER_TYPE_RESPONSE;
@@ -469,6 +476,14 @@ static void USB_DeviceMtpStateMachine(usb_device_mtp_struct_t *mtpHandle,
             if (mtpHandle->transferTotal == 0U)
             {
                 /* Is the first packet. */
+                if (message->length < sizeof(uint32_t))
+                {
+                    /* The first four bytes of the data block carry the total length; a shorter first
+                       packet cannot supply them, so reject instead of reading beyond what arrived. */
+                    USB_DevicePrimeBulkInAndOutStall(mtpHandle, MTP_RESPONSE_TRANSACTION_CANCELLED, 1);
+                    break;
+                }
+
                 mtpHandle->transferTotal = USB_LONG_FROM_LITTLE_ENDIAN_ADDRESS(message->buffer);
 
                 /* Special process for receiving >4GB file. */
@@ -1187,6 +1202,13 @@ usb_status_t USB_DeviceMtpEvent(void *handle, uint32_t event, void *param)
 
                         if ((kStatus_USB_Success == error) && (NULL != extendedEvent.buffer))
                         {
+                            /* The transactionID is written as 4 bytes at offset 2, so the buffer the
+                               application handed back must be at least 6 bytes long. */
+                            if (extendedEvent.length < (2U + sizeof(uint32_t)))
+                            {
+                                error = kStatus_USB_Error;
+                                break;
+                            }
                             USB_LONG_TO_LITTLE_ENDIAN_ADDRESS(mtpHandle->mtpContainer->transactionID,
                                                               (extendedEvent.buffer + 2U));
                         }
@@ -1352,6 +1374,13 @@ usb_status_t USB_DeviceMtpEventSend(class_handle_t handle, usb_device_mtp_event_
     }
 
     mtpHandle->interruptInBusy = 1U;
+
+    /* eventContainer only holds param1..param3, so a larger paramNumber would make containerLength
+       exceed the struct and send adjacent memory to the host. Clamp it. */
+    if (event->paramNumber > USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER)
+    {
+        event->paramNumber = USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER;
+    }
 
     /* build event structure. */
     mtpHandle->eventContainer->containerLength = (event->paramNumber * 4U) + USB_DEVICE_MTP_MINIMUM_CONTAINER_LENGTH;
