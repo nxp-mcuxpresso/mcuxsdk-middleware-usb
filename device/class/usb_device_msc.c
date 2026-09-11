@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2015 - 2016, Freescale Semiconductor, Inc.
- * Copyright 2016 - 2017,2019 NXP
+ * Copyright 2016 - 2017,2019, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -1376,25 +1376,10 @@ usb_status_t USB_DeviceMscSend(usb_device_msc_struct_t *mscHandle)
 
     lba.buffer = NULL;
     lba.lun    = mscHandle->mscCbw->logicalUnitNumber;
-    /*classCallback is initialized in classInit of s_UsbDeviceClassInterfaceMap,
-    it is from the second parameter of classInit*/
-#if (defined(USB_DEVICE_CONFIG_RETURN_VALUE_CHECK) && (USB_DEVICE_CONFIG_RETURN_VALUE_CHECK > 0U))
-    if (kStatus_USB_Success !=
-        mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventReadRequest, &lba))
-    {
-        return kStatus_USB_Error;
-    }
-#else
-    (void)mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventReadRequest,
-                                                        &lba);
-#endif
 
-    if (mscHandle->currentOffset <
+    /* Reject an offset past the end of the medium before the storage callback sees it, not after. */
+    if (mscHandle->currentOffset >=
         mscHandle->luInformations[mscHandle->mscCbw->logicalUnitNumber].totalLbaNumberSupports)
-    {
-        status = USB_DeviceSendRequest(mscHandle->handle, mscHandle->bulkInEndpoint, lba.buffer, lba.size);
-    }
-    else
     {
         mscHandle->needInStallFlag     = 0U;
         mscHandle->inEndpointStallFlag = 1U;
@@ -1408,7 +1393,31 @@ usb_status_t USB_DeviceMscSend(usb_device_msc_struct_t *mscHandle)
 #else
         (void)USB_DeviceStallEndpoint(mscHandle->handle, mscHandle->bulkInEndpoint);
 #endif
+        return status;
     }
+
+    /*classCallback is initialized in classInit of s_UsbDeviceClassInterfaceMap,
+    it is from the second parameter of classInit*/
+#if (defined(USB_DEVICE_CONFIG_RETURN_VALUE_CHECK) && (USB_DEVICE_CONFIG_RETURN_VALUE_CHECK > 0U))
+    if (kStatus_USB_Success !=
+        mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventReadRequest, &lba))
+    {
+        return kStatus_USB_Error;
+    }
+#else
+    (void)mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventReadRequest,
+                                                        &lba);
+#endif
+
+    /* The application may decline the request by leaving the buffer unset; do not hand a NULL
+       pointer to the controller driver. */
+    if ((NULL == lba.buffer) && (0U != lba.size))
+    {
+        return kStatus_USB_Error;
+    }
+
+    status = USB_DeviceSendRequest(mscHandle->handle, mscHandle->bulkInEndpoint, lba.buffer, lba.size);
+
     return status;
 }
 
@@ -1449,25 +1458,10 @@ usb_status_t USB_DeviceMscRecv(usb_device_msc_struct_t *mscHandle)
 
     lba.buffer = NULL;
     lba.lun    = mscHandle->mscCbw->logicalUnitNumber;
-    /*classCallback is initialized in classInit of s_UsbDeviceClassInterfaceMap,
-    it is from the second parameter of classInit*/
-#if (defined(USB_DEVICE_CONFIG_RETURN_VALUE_CHECK) && (USB_DEVICE_CONFIG_RETURN_VALUE_CHECK > 0U))
-    if (kStatus_USB_Success !=
-        mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventWriteRequest, &lba))
-    {
-        return kStatus_USB_Error;
-    }
-#else
-    (void)mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventWriteRequest,
-                                                        &lba);
-#endif
 
-    if (mscHandle->currentOffset <
+    /* Reject an offset past the end of the medium before the storage callback sees it, not after. */
+    if (mscHandle->currentOffset >=
         mscHandle->luInformations[mscHandle->mscCbw->logicalUnitNumber].totalLbaNumberSupports)
-    {
-        status = USB_DeviceRecvRequest(mscHandle->handle, mscHandle->bulkOutEndpoint, lba.buffer, lba.size);
-    }
-    else
     {
         mscHandle->needOutStallFlag     = 0U;
         mscHandle->outEndpointStallFlag = 1U;
@@ -1481,7 +1475,31 @@ usb_status_t USB_DeviceMscRecv(usb_device_msc_struct_t *mscHandle)
 #else
         (void)USB_DeviceStallEndpoint(mscHandle->handle, mscHandle->bulkOutEndpoint);
 #endif
+        return status;
     }
+
+    /*classCallback is initialized in classInit of s_UsbDeviceClassInterfaceMap,
+    it is from the second parameter of classInit*/
+#if (defined(USB_DEVICE_CONFIG_RETURN_VALUE_CHECK) && (USB_DEVICE_CONFIG_RETURN_VALUE_CHECK > 0U))
+    if (kStatus_USB_Success !=
+        mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventWriteRequest, &lba))
+    {
+        return kStatus_USB_Error;
+    }
+#else
+    (void)mscHandle->configurationStruct->classCallback((class_handle_t)mscHandle, kUSB_DeviceMscEventWriteRequest,
+                                                        &lba);
+#endif
+
+    /* The application may decline the request by leaving the buffer unset; do not hand a NULL
+       pointer to the controller driver. */
+    if ((NULL == lba.buffer) && (0U != lba.size))
+    {
+        return kStatus_USB_Error;
+    }
+
+    status = USB_DeviceRecvRequest(mscHandle->handle, mscHandle->bulkOutEndpoint, lba.buffer, lba.size);
+
     return status;
 }
 
