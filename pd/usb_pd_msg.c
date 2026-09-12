@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 - 2017 NXP
+ * Copyright 2015 - 2017, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -504,7 +504,21 @@ uint8_t PD_MsgGetReceiveResult(pd_instance_t *pdInstance)
 
                     if (needCopy != 0U)
                     {
-                        destBuffer += (extHeader.bitFields.chunkNumber * 26U);
+                        /* chunkNumber is a 4-bit peer-controlled field (0..15), and each chunk carries
+                         * up to 26 bytes. destBuffer starts 6 bytes into receivingData (msg header +
+                         * ext header), so the highest valid chunkNumber that still keeps
+                         * destBuffer + 26 within receivingData[67] (268 bytes) is
+                         * (268 - 6 - 26) / 26 = 9. Drop the message instead of letting the
+                         * subsequent PD_MsgCopy write past the buffer. */
+                        if (extHeader.bitFields.chunkNumber > 9U)
+                        {
+                            needCopy                  = 0U;
+                            pdInstance->receiveResult = kStatus_PD_Error;
+                        }
+                        else
+                        {
+                            destBuffer += (extHeader.bitFields.chunkNumber * 26U);
+                        }
                     }
                 }
             }
