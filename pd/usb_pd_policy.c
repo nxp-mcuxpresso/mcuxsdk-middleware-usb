@@ -7440,6 +7440,15 @@ static void PD_PsmVdmIdleProcessPdMessage(pd_instance_t *pdInstance,
                         /* vendor structured vdm */
                         if (triggerInfo->vdmHeader.bitFields.command >= 16U)
                         {
+                            /* pdMsgDataLength is the partner's NumOfDataObjs. The VDM header occupies
+                             * the first object, so a message with none cannot carry a VDM at all and
+                             * "pdMsgDataLength - 1U" would wrap to 255, telling the application to
+                             * read 255 VDOs (1020 bytes) from a buffer that holds none. The sibling
+                             * cases above already guard on NumOfDataObjs >= 1U. */
+                            if (triggerInfo->msgHeader.bitFields.NumOfDataObjs < 1U)
+                            {
+                                break;
+                            }
                             needReply                  = 1;
                             commandVdmRequest.vdoCount = (uint8_t)(triggerInfo->pdMsgDataLength - 1U);
                             commandVdmRequest.vdmHeader.structuredVdmHeaderVal =
