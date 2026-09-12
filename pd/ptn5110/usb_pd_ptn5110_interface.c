@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 - 2020 NXP
+ * Copyright 2016 - 2020, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -432,11 +432,19 @@ pd_status_t PDPTN5110_Receive(pd_handle pdHandle, uint8_t startOfPacketMask, uin
     /* check PHY has pending message. */
     if (pdInstance->pendingMsg != 0U)
     {
+        uint32_t copyLength;
+
         pdInstance->pendingMsg = 0;
 
         /* rxLength exclude RECEIVE_BYTE_COUNT and RX_BUF_FRAME_TYPE, so plus 2 here. */
-        (void)memcpy(buffer, (uint8_t *)&pdInstance->receivingDataCache[0],
-                     (uint32_t)pdInstance->cacheRxResult.rxLength + 2U);
+        copyLength = (uint32_t)pdInstance->cacheRxResult.rxLength + 2U;
+        /* rxLength is derived from the TCPC's byte counts, which echo the partner's message, so cap
+           the copy at the cache it is read from. */
+        if (copyLength > sizeof(pdInstance->receivingDataCache))
+        {
+            copyLength = sizeof(pdInstance->receivingDataCache);
+        }
+        (void)memcpy(buffer, (uint8_t *)&pdInstance->receivingDataCache[0], copyLength);
         PD_Notify(pdInstance, PD_PHY_EVENT_RECEIVE_COMPLETE, (void *)&(pdInstance->cacheRxResult));
 
         return kStatus_PD_Success;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 - 2017 NXP
+ * Copyright 2015 - 2017, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -403,6 +403,19 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8
         uint16_t total_bytes_received = 0;
         uint8_t rx_buf_count          = dst[0];
         uint8_t tmp_buf[2];
+        /* dst is pdInstance->receivingDataCache (see the sole caller). rx_buf_count comes from the
+         * TCPC's RECEIVE_BYTE_COUNT and is echoed from the partner's message, so both block reads
+         * below must be clamped to what that buffer can still hold - the second read starts
+         * rx_buf_count - 1 bytes in, so unclamped the two together can write far past its end, and
+         * rxLength derived from them would then drive an equally oversized memcpy in
+         * PDPTN5110_Receive(). */
+        uint32_t cacheSize      = sizeof(pdInstance->receivingDataCache);
+        uint32_t cacheRemaining = cacheSize;
+
+        if (((uint32_t)rx_buf_count + 1U) > cacheRemaining)
+        {
+            rx_buf_count = (uint8_t)(cacheRemaining - 1U);
+        }
 
         /* Move to start of buffer */
         Reg_BusWriteByte(pdInstance, command, (uint8_t)TCPC_RESETRECEIVEBUFFER);
@@ -414,12 +427,14 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8
             total_bytes_received += (uint16_t)rx_buf_count - 1U;
 		}
 
-        if ((Reg_CacheRead(pdInstance, INTERRUPT, alert) & TCPC_ALERT_BEGINNING_SOP_MESSAGE_STATUS_MASK) != 0U)
+        if (((Reg_CacheRead(pdInstance, INTERRUPT, alert) & TCPC_ALERT_BEGINNING_SOP_MESSAGE_STATUS_MASK) != 0U) &&
+            (rx_buf_count >= 1U))
         {
             uint16_t ClrValue = TCPC_ALERT_BEGINNING_SOP_MESSAGE_STATUS_MASK;
 
             /* Move pointer to next location */
             dst += rx_buf_count - 1U; /* Number of data bytes, remove the 1 byte count for frame type */
+            cacheRemaining -= ((uint32_t)rx_buf_count - 1U);
 
             /* Save the bytes that are overwritten by {readable byte count, frame type} */
             tmp_buf[0] = dst[0]; /* save last two bytes of previous buffer read */
@@ -430,7 +445,14 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8
 
             /* Re-read count */
             (void)Reg_BusReadBlock(pdInstance, receive_byte_count, 1, &rx_buf_count);
-            total_bytes_received += (uint16_t)rx_buf_count - 1U;
+            if (((uint32_t)rx_buf_count + 1U) > cacheRemaining)
+            {
+                rx_buf_count = (uint8_t)(cacheRemaining - 1U);
+            }
+            if (rx_buf_count >= 1U)
+            {
+                total_bytes_received += (uint16_t)rx_buf_count - 1U;
+            }
 
             /* Note: I am assuming that there is no need to limit
              * read length to 132 bytes */
