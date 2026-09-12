@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 - 2017 NXP
+ * Copyright 2015 - 2017, 2026 NXP
  * All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
@@ -1075,6 +1075,18 @@ static uint8_t PD_PsmChunkingLayerRXStateMachine(pd_instance_t *pdInstance, psm_
                 break;
 
             case RCH_Processing_Extended_Message: /* C */
+                /* NumOfDataObjs is a 3-bit field the port partner sent. Every chunk of a chunked
+                 * extended message carries at least the 2-byte extended header, so a chunk claiming
+                 * zero data objects is malformed - and "NumOfDataObjs * 4U - 2U" below would
+                 * underflow to 0xFFFFFFFE, which both corrupts chunkNumBytesReceived and makes the
+                 * ">= dataSize" completion test below pass, passing an empty message up as if it
+                 * were complete. */
+                if (triggerInfo->msgHeader.bitFields.NumOfDataObjs == 0U)
+                {
+                    pdInstance->chunkingRXState = RCH_Report_Error;
+                    break;
+                }
+
                 if (extHeader.bitFields.chunkNumber == 0U)
                 {
                     pdInstance->chunkNumberExpected   = 0;
