@@ -15,7 +15,9 @@
  * Definitions
  ******************************************************************************/
 /* 54-27-8D is assigned by IEEE, and 45-54-48 is ANSCII code of string 'ETH'. */
+#ifndef ETH_ADAPTER_MAC_ADDRESS
 #define ETH_ADAPTER_MAC_ADDRESS {0x54, 0x27, 0x8d, 0x45, 0x54, 0x48}
+#endif
 
 #define ETH_ADAPTER_PHY_STABILITY_DELAY_US (500000U)
 #define ETH_ADAPTER_PHY_AUTONEGOTIATION_COUNT (10U)
