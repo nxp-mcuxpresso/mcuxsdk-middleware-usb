@@ -63,6 +63,11 @@ static uint8_t ethFrameTxBuffer[ETH_ADAPTER_PHY_FRAME_TX_BUFFER_LENGTH][ENET_FRA
 USB_DMA_NONINIT_DATA_ALIGN(USB_DATA_ALIGN_SIZE)
 static uint8_t ethFrameRxBuffer[ETH_ADAPTER_PHY_RRAME_RX_BUFFER_LENGTH][ENET_FRAME_MAX_FRAMELEN];
 
+/*! @brief Rx buffer address table. The ENET driver keeps this table in its handle
+ * (enet_handle_t::rxBufferStartAddr) and dereferences it while receiving, so it
+ * must outlive ETH_ADAPTER_MAC_Init(). */
+static uint32_t rxbuffer[ENET_RXBD_NUM];
+
 eth_adapter_handle_t ethAdapterHandle;
 
 /*******************************************************************************
@@ -96,7 +101,6 @@ static eth_adapter_err_t ETH_ADAPTER_MAC_Init(void)
     enet_config_t config;
     bool link = false;
     bool autonego = false;
-    uint32_t rxbuffer[ENET_RXBD_NUM];
 
     for (uint8_t index = 0U; index < ENET_RXBD_NUM; index++)
     {
@@ -146,8 +150,12 @@ static eth_adapter_err_t ETH_ADAPTER_MAC_Init(void)
     }
 
     /* The miiMode should be set according to the different PHY interfaces. */
-#ifdef EXAMPLE_PHY_INTERFACE_RGMII
+#if defined(EXAMPLE_PHY_INTERFACE_RGMII)
     config.miiMode = kENET_RgmiiMode;
+#elif defined(EXAMPLE_PHY_INTERFACE_MII)
+    /* ERR053383: some silicon (e.g. FRDM-MCXA577 A0) has an ENET RMII RX issue,
+     * so the external PHY is driven over MII instead of RMII. */
+    config.miiMode = kENET_MiiMode;
 #else
     config.miiMode = kENET_RmiiMode;
 #endif
