@@ -439,11 +439,19 @@ pd_status_t PDPTN5110_Receive(pd_handle pdHandle, uint8_t startOfPacketMask, uin
         /* rxLength exclude RECEIVE_BYTE_COUNT and RX_BUF_FRAME_TYPE, so plus 2 here. */
         copyLength = (uint32_t)pdInstance->cacheRxResult.rxLength + 2U;
         /* rxLength is derived from the TCPC's byte counts, which echo the partner's message, so cap
-           the copy at the cache it is read from. */
+           the copy at the cache it is read from, and also at the destination: buffer is
+           pdInstance->receivingDataBuffer, which PD_MsgReceive() points at the much smaller
+           receivingChunkedData whenever unchunked support was not negotiated. */
         if (copyLength > sizeof(pdInstance->receivingDataCache))
         {
             copyLength = sizeof(pdInstance->receivingDataCache);
         }
+#if (defined PD_CONFIG_EXTENDED_MSG_SUPPORT) && (PD_CONFIG_EXTENDED_MSG_SUPPORT)
+        if ((pdInstance->unchunkedFeature == 0U) && (copyLength > sizeof(pdInstance->receivingChunkedData)))
+        {
+            copyLength = sizeof(pdInstance->receivingChunkedData);
+        }
+#endif
         (void)memcpy(buffer, (uint8_t *)&pdInstance->receivingDataCache[0], copyLength);
         PD_Notify(pdInstance, PD_PHY_EVENT_RECEIVE_COMPLETE, (void *)&(pdInstance->cacheRxResult));
 

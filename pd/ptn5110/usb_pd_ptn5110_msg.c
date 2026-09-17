@@ -28,9 +28,15 @@ static void PDPTN5110_MsgHalRcvdControlDataOrChunked(pd_instance_t *pdInstance,
                                                      uint8_t *dest,
                                                      pd_phy_rx_result_t *rxResult);
 #if defined(PD_CONFIG_EXTENDED_MSG_SUPPORT) && (PD_CONFIG_EXTENDED_MSG_SUPPORT)
-static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8_t *dst, pd_phy_rx_result_t *rxResult);
+static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance,
+                                                uint8_t *dst,
+                                                uint32_t dstSize,
+                                                pd_phy_rx_result_t *rxResult);
 #endif
-static void PDPTN5110_MsgHalRxReceiveBuffer(pd_instance_t *pdInstance, uint8_t *dest, pd_phy_rx_result_t *rxResult);
+static void PDPTN5110_MsgHalRxReceiveBuffer(pd_instance_t *pdInstance,
+                                            uint8_t *dest,
+                                            uint32_t destSize,
+                                            pd_phy_rx_result_t *rxResult);
 
 /*******************************************************************************
  * Variables
@@ -390,11 +396,15 @@ static void PDPTN5110_MsgHalRcvdControlDataOrChunked(pd_instance_t *pdInstance,
  * @param pdInstance      The pd handle. It equals the value returned from PD_InstanceInit.
  * @param dst             The receive buffer. The format of dst - 0-readable_byte_count, 1-rx_buf_frame_type,
  *                        2-MsgHeaderLowByte, 3-MsgHeaderHighByte, 4-Byte0, 5-Byte1, ..., N-ByteN.
+ * @param dstSize         Capacity of dst in bytes. The block reads below are clamped to it.
  * @param rxResult        It is out parameter. Please refer to the enumeration pd_phy_rx_result_t.
  *
  * @return None.
  */
-static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8_t *dst, pd_phy_rx_result_t *rxResult)
+static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance,
+                                                uint8_t *dst,
+                                                uint32_t dstSize,
+                                                pd_phy_rx_result_t *rxResult)
 {
     if (Reg_CacheRead(pdInstance, GLOBAL, pd_interface_rev) >= PD_INTERFACE_REV2VER1)
     {
@@ -403,14 +413,15 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8
         uint16_t total_bytes_received = 0;
         uint8_t rx_buf_count          = dst[0];
         uint8_t tmp_buf[2];
-        /* dst is pdInstance->receivingDataCache (see the sole caller). rx_buf_count comes from the
-         * TCPC's RECEIVE_BYTE_COUNT and is echoed from the partner's message, so both block reads
-         * below must be clamped to what that buffer can still hold - the second read starts
-         * rx_buf_count - 1 bytes in, so unclamped the two together can write far past its end, and
-         * rxLength derived from them would then drive an equally oversized memcpy in
-         * PDPTN5110_Receive(). */
-        uint32_t cacheSize      = sizeof(pdInstance->receivingDataCache);
-        uint32_t cacheRemaining = cacheSize;
+        /* rx_buf_count comes from the TCPC's RECEIVE_BYTE_COUNT and is echoed from the partner's
+         * message, so both block reads below must be clamped to what the destination can still hold
+         * - the second read starts rx_buf_count - 1 bytes in, so unclamped the two together can
+         * write far past its end, and rxLength derived from them would then drive an equally
+         * oversized memcpy in PDPTN5110_Receive(). Clamp against the caller's actual buffer: dst is
+         * receivingDataCache on the pending-message path but the much smaller
+         * receivingChunkedData whenever unchunked support was not negotiated, and the partner - not
+         * us - decides whether an arriving extended message is chunked. */
+        uint32_t cacheRemaining = dstSize;
 
         if (((uint32_t)rx_buf_count + 1U) > cacheRemaining)
         {
@@ -512,11 +523,15 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance, uint8
  * @param pdInstance      The pd handle. It equals the value returned from PD_InstanceInit.
  * @param dest            The receive buffer. The format of dest - 0-readable_byte_count, 1-rx_buf_frame_type,
  *                        2-MsgHeaderLowByte, 3-MsgHeaderHighByte, 4-Byte0, 5-Byte1, ..., N-ByteN.
+ * @param destSize        Capacity of dest in bytes, passed on to the unchunked handler to bound its reads.
  * @param rxResult        It is out parameter. Please refer to the enumeration pd_phy_rx_result_t.
  *
  * @return None.
  */
-static void PDPTN5110_MsgHalRxReceiveBuffer(pd_instance_t *pdInstance, uint8_t *dest, pd_phy_rx_result_t *rxResult)
+static void PDPTN5110_MsgHalRxReceiveBuffer(pd_instance_t *pdInstance,
+                                            uint8_t *dest,
+                                            uint32_t destSize,
+                                            pd_phy_rx_result_t *rxResult)
 {
 #if defined(PD_CONFIG_EXTENDED_MSG_SUPPORT) && (PD_CONFIG_EXTENDED_MSG_SUPPORT)
     pd_msg_header_t msgHeader;
@@ -548,7 +563,7 @@ static void PDPTN5110_MsgHalRxReceiveBuffer(pd_instance_t *pdInstance, uint8_t *
         extendMsgHeader.extendedMsgHeaderVal = USB_SHORT_FROM_LITTLE_ENDIAN_ADDRESS(((uint8_t *)dest + 4));
         if (extendMsgHeader.bitFields.chunked == 0U)
         {
-            PDPTN5110_MsgHalRcvdExtMsgUnChunked(pdInstance, dest, rxResult);
+            PDPTN5110_MsgHalRcvdExtMsgUnChunked(pdInstance, dest, destSize, rxResult);
         }
     }
 #endif
@@ -654,7 +669,17 @@ void PDPTN5110_MsgHalReceiveCompleteCallback(pd_instance_t *pdInstance, pd_statu
 
         if (rxState == kStatus_PD_Success)
         {
-            PDPTN5110_MsgHalRxReceiveBuffer(pdInstance, (uint8_t *)pdInstance->receivingDataBuffer, &rxResult);
+            /* receivingDataBuffer was pointed at one of two differently sized buffers by
+               PD_MsgReceive(), so report the matching capacity rather than assuming the larger. */
+#if (defined PD_CONFIG_EXTENDED_MSG_SUPPORT) && (PD_CONFIG_EXTENDED_MSG_SUPPORT)
+            uint32_t receiveBufferSize = (pdInstance->unchunkedFeature != 0U) ?
+                                             sizeof(pdInstance->receivingData) :
+                                             sizeof(pdInstance->receivingChunkedData);
+#else
+            uint32_t receiveBufferSize = sizeof(pdInstance->receivingData);
+#endif
+            PDPTN5110_MsgHalRxReceiveBuffer(pdInstance, (uint8_t *)pdInstance->receivingDataBuffer, receiveBufferSize,
+                                            &rxResult);
             if (rxResult.rxResultStatus != kStatus_PD_Success)
             {
                 return;
@@ -676,6 +701,7 @@ void PDPTN5110_MsgHalReceiveCompleteCallback(pd_instance_t *pdInstance, pd_statu
                the RX buffer and assert #Alert pin twice, so pend a message here. */
             pdInstance->pendingMsg = 1;
             PDPTN5110_MsgHalRxReceiveBuffer(pdInstance, (uint8_t *)&(pdInstance->receivingDataCache[0]),
+                                            sizeof(pdInstance->receivingDataCache),
                                             (pd_phy_rx_result_t *)&(pdInstance->cacheRxResult));
         }
     }
