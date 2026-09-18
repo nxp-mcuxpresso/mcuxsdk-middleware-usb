@@ -347,6 +347,20 @@
  */
 #define RNDIS_SET_MSG_DATA_OFFSET (8U)
 
+/*! @name Minimum number of bytes a received RNDIS command must carry for its handler to read
+ * the header fields it needs. s_rndisCommand is a static non-init buffer that keeps the bytes
+ * of whatever command arrived before, so a handler that reads past the length the host actually
+ * sent takes those fields from residue and echoes some of them straight back in the CMPLT.
+ * Each bound covers exactly the fields its handler reads, so a host that sends a short-but-
+ * conforming header is not rejected.
+ */
+/* @{ */
+/*! REMOTE_NDIS_QUERY_MSG: read up to and including the oid field. */
+#define RNDIS_QUERY_MSG_MIN_SIZE (16U)
+/*! REMOTE_NDIS_SET_MSG: read up to and including the informationBufferOffset field. */
+#define RNDIS_SET_MSG_MIN_SIZE (24U)
+/* @} */
+
 /*! This is the maximum observed command size we get on control endpoint --
  * Memory for commands is allocated at initialization, instead of
  * being dynamically allocated  when command is received to avoid memory

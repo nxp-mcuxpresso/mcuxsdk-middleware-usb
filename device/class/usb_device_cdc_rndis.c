@@ -308,6 +308,51 @@ usb_status_t USB_DeviceCdcRndisMessageSet(usb_device_cdc_rndis_struct_t *handle,
 }
 
 /*!
+ * @brief Check that a received RNDIS command is long enough for its handler to parse.
+ *
+ * handle->rndisCommand is a static non-init buffer that still holds the bytes of the command that
+ * arrived before, so a handler that reads a header field the host did not send this time takes
+ * that field from residue rather than from the message. Several of those fields (requestID,
+ * majorVersion, minorVersion) are copied straight into the CMPLT returned to the host, which turns
+ * the residue into data disclosed to the peer, and oid / informationBufferOffset would steer
+ * parsing off a stale value. Reject the command instead.
+ *
+ * @param messageType The RNDIS message type read from the command buffer.
+ * @param receivedLength The number of bytes the host actually sent.
+ * @return Whether the command carries the header fields its handler reads.
+ */
+static bool USB_DeviceCdcRndisCommandLengthValid(uint32_t messageType, uint32_t receivedLength)
+{
+    uint32_t minLength;
+
+    switch (messageType)
+    {
+        case RNDIS_INITIALIZE_MSG:
+            /* The handler reads every field of the message, up to and including maxTransferSize. */
+            minLength = sizeof(rndis_init_msg_struct_t);
+            break;
+        case RNDIS_QUERY_MSG:
+            minLength = RNDIS_QUERY_MSG_MIN_SIZE;
+            break;
+        case RNDIS_SET_MSG:
+            minLength = RNDIS_SET_MSG_MIN_SIZE;
+            break;
+        case RNDIS_KEEPALIVE_MSG:
+            /* The handler reads requestID, the last field of the message. */
+            minLength = sizeof(rndis_keepalive_msg_struct_t);
+            break;
+        default:
+            /* RNDIS_RESET_MSG and RNDIS_INDICATE_STATUS_MSG read no field of the command, and an
+               unsupported message type is rejected by the switch in USB_DeviceCdcRndisMessageGet.
+               messageType itself was already covered by the check in USB_DeviceCdcRndisMessageSet. */
+            minLength = sizeof(uint32_t);
+            break;
+    }
+
+    return (receivedLength >= minLength);
+}
+
+/*!
  * @brief Response to kUSB_DeviceCdcEventGetEncapsulatedResponse.
  *
  * This function is called in response to kUSB_DeviceCdcEventGetEncapsulatedResponse.
@@ -334,6 +379,14 @@ usb_status_t USB_DeviceCdcRndisMessageGet(usb_device_cdc_rndis_struct_t *handle,
        cleaner implementation as all manipulations and parsing on command
        are done in this function */
     messageType = USB_LONG_TO_LITTLE_ENDIAN(*(uint32_t *)((void *)handle->rndisCommand));
+
+    /* Each handler below reads header fields at fixed offsets in handle->rndisCommand. Confirm the
+       host actually sent them before any of those reads happens, so none of them can come from the
+       residue of an earlier command. */
+    if (!USB_DeviceCdcRndisCommandLengthValid(messageType, handle->rndisCommandLength))
+    {
+        return kStatus_USB_InvalidRequest;
+    }
 
     switch (messageType)
     {
