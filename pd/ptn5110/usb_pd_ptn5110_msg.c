@@ -484,10 +484,27 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance,
         uint8_t i;
         int16_t data_received;
         int16_t data_remain;
+        /* The 30-byte block reads below start at dst + 32 (byte count and frame type, message
+         * header, and the 28 bytes already buffered), so this is all the room they have. Only whole
+         * blocks are ever read, so round down: that makes maxDataBytes exactly the payload this
+         * function can deliver, and keeps the rxLength reported below from claiming bytes that were
+         * never written. */
+        uint32_t blockRoom    = (dstSize > 32U) ? (dstSize - 32U) : 0U;
+        uint32_t maxDataBytes = 26U + ((blockRoom / 30U) * 30U);
 
         dst += 2;
         i                  = dst[2] & (uint8_t)PD_MSG_EXT_HEADER_DATA_SIZE_MASK;
         data_received      = (int16_t)i;
+        /* data_received is the data size the partner put in the extended header, so cap it at what
+         * dst can still hold. Unclamped, a declared size of 255 reads eight 30-byte blocks - 240
+         * bytes past dst + 32 - which overruns even the 268-byte receivingDataCache, and overruns
+         * the 32-byte receivingChunkedData that dst points at whenever unchunked support was not
+         * negotiated. Truncating here also keeps the rxLength reported below consistent with the
+         * bytes actually written, the same way the REV2VER1 branch above does. */
+        if ((uint32_t)data_received > maxDataBytes)
+        {
+            data_received = (int16_t)maxDataBytes;
+        }
         rxResult->rxLength = (uint16_t)data_received + 2U + 2U; /* add ext header and normal header */
         dst += (2 + 28);                                        /* head and first packet has been buffer */
 
@@ -497,7 +514,7 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance,
             /* need to use TCPC extended rx buffer */
             data_remain = data_received - 26;
             i           = 1;
-            while (data_remain > 0)
+            while ((data_remain > 0) && (blockRoom >= 30U))
             {
                 /* set ext_msg_index */
                 Reg_BusWriteByte(pdInstance, ptn5110_ext_msg_index, i);
@@ -505,6 +522,7 @@ static void PDPTN5110_MsgHalRcvdExtMsgUnChunked(pd_instance_t *pdInstance,
                 (void)Reg_BusReadBlock(pdInstance, rx_buf_header, 30, dst);
                 data_remain -= 30;
                 dst += 30;
+                blockRoom -= 30U;
                 i++;
             }
             Reg_BusWriteByte(pdInstance, ptn5110_ext_msg_index, 0);
