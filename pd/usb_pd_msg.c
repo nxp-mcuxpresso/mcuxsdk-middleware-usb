@@ -456,7 +456,19 @@ uint8_t PD_MsgGetReceiveResult(pd_instance_t *pdInstance)
             sourceBuffer = (uint8_t *)pdInstance->receivingDataBuffer;
             sourceBuffer += 2U;
             msgHeader.msgHeaderVal = USB_SHORT_FROM_LITTLE_ENDIAN_ADDRESS(sourceBuffer);
-            if (msgHeader.bitFields.extended != 0U)
+            /* An extended message carries a 2-byte extended header right after the 2-byte message
+             * header, so receivedLength - which spans msgHeader..ByteN - must be at least 4. The
+             * partner can set the extended bit on a message with no data objects, and the PHY layer
+             * then never fills the bytes at offset 4: the extended header below would come from the
+             * residue of an earlier message, and "receiveLength - 4U" at the end of this function
+             * would wrap to ~4GB and drive PD_MsgCopy() - a bare memcpy - straight off the buffer.
+             * The NumOfDataObjs guard in PD_PsmChunkingLayerRXStateMachine() runs later, in the
+             * policy engine, so it cannot cover this. Drop the message here instead. */
+            if ((msgHeader.bitFields.extended != 0U) && (pdInstance->receivedLength < 4U))
+            {
+                pdInstance->receiveResult = kStatus_PD_Error;
+            }
+            else if (msgHeader.bitFields.extended != 0U)
             {
                 sourceBuffer += 2U;
                 extHeader.extendedMsgHeaderVal = USB_SHORT_FROM_LITTLE_ENDIAN_ADDRESS(sourceBuffer);
