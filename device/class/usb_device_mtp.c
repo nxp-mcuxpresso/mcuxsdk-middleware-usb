@@ -1360,6 +1360,7 @@ usb_status_t USB_DeviceMtpEventSend(class_handle_t handle, usb_device_mtp_event_
 {
     usb_device_mtp_struct_t *mtpHandle;
     usb_status_t error = kStatus_USB_Error;
+    uint8_t paramNumber;
 
     if (NULL == handle)
     {
@@ -1376,14 +1377,16 @@ usb_status_t USB_DeviceMtpEventSend(class_handle_t handle, usb_device_mtp_event_
     mtpHandle->interruptInBusy = 1U;
 
     /* eventContainer only holds param1..param3, so a larger paramNumber would make containerLength
-       exceed the struct and send adjacent memory to the host. Clamp it. */
-    if (event->paramNumber > USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER)
+       exceed the struct and send adjacent memory to the host. Clamp a local copy rather than the
+       caller's event struct, which this function does not own. */
+    paramNumber = event->paramNumber;
+    if (paramNumber > USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER)
     {
-        event->paramNumber = USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER;
+        paramNumber = USB_DEVICE_MTP_MAX_EVENT_PARAM_NUMBER;
     }
 
     /* build event structure. */
-    mtpHandle->eventContainer->containerLength = (event->paramNumber * 4U) + USB_DEVICE_MTP_MINIMUM_CONTAINER_LENGTH;
+    mtpHandle->eventContainer->containerLength = (paramNumber * 4U) + USB_DEVICE_MTP_MINIMUM_CONTAINER_LENGTH;
     mtpHandle->eventContainer->containerType   = USB_DEVICE_MTP_CONTAINER_TYPE_EVENT;
     mtpHandle->eventContainer->code            = event->code;
     mtpHandle->eventContainer->transactionID   = mtpHandle->mtpContainer->transactionID;
