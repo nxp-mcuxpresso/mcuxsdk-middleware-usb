@@ -226,7 +226,7 @@ static void USB_DeviceEhciSetDefaultState(usb_device_ehci_state_struct_t *ehciSt
     /* Enable USB LPM L1 entry interrupt and exit interrupt */
 #if ((defined(USB_DEVICE_CONFIG_LOW_POWER_MODE)) && (USB_DEVICE_CONFIG_LOW_POWER_MODE > 0U))
 #if ((defined(USB_DEVICE_CONFIG_LPM_L1)) && (USB_DEVICE_CONFIG_LPM_L1 > 0U))
-    ehciState->registerBase->USBINTR |= USB_USBINTR_LPM_L1_ENTRYIE_MASK;
+    ehciState->registerBase->USBINTR |= USBHS_USBINTR_LPM_L1_ENTRYIE_MASK;
     ehciState->registerNcBase->LPM_CSR0 |= USBNC_LPM_CSR0_LPM_EN_MASK;
     ehciState->registerNcBase->LPM_CSR1 |= USBNC_LPM_CSR1_LPM_DEV_RES_MASK;
 #endif
@@ -916,11 +916,11 @@ static void USB_DeviceEhciInterruptPortChange(usb_device_ehci_state_struct_t *eh
     {
 #if (defined(USB_DEVICE_CONFIG_LPM_L1) && (USB_DEVICE_CONFIG_LPM_L1 > 0U))
         /* pollinng if the device exits the L1 state */
-        while (!(ehciState->registerBase->USBSTS & USB_USBSTS_LPM_L1_EXITI_MASK))
+        while (!(ehciState->registerBase->USBSTS & USBHS_USBSTS_LPM_L1_EXITI_MASK))
         {
             __NOP();
         }
-        ehciState->registerBase->USBSTS |= USB_USBSTS_LPM_L1_EXITI_MASK;
+        ehciState->registerBase->USBSTS |= USBHS_USBSTS_LPM_L1_EXITI_MASK;
 #endif
         /* Set the resume flag */
         ehciState->isSuspending = 0U;
@@ -2504,7 +2504,7 @@ void USB_DeviceEhciIsrFunction(void *deviceHandle)
         USB_DeviceEhciInterruptSuspend(ehciState);
     }
 #if (defined(USB_DEVICE_CONFIG_LPM_L1) && (USB_DEVICE_CONFIG_LPM_L1 > 0U))
-    if (0U != (status & USB_USBSTS_LPM_L1_ENTRYI_MASK))
+    if (0U != (status & USBHS_USBSTS_LPM_L1_ENTRYI_MASK))
     {
         USB_DeviceEhciInterruptLPMSleep(ehciState);
     }

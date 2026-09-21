@@ -3681,7 +3681,7 @@ static usb_status_t USB_HostEhciStartIP(usb_host_ehci_instance_t *ehciInstance)
     ehciInstance->ehciIpBase->USBINTR |= (0x1000037U);
 #if ((defined(USB_HOST_CONFIG_LOW_POWER_MODE)) && (USB_HOST_CONFIG_LOW_POWER_MODE > 0U))
 #if ((defined(USB_HOST_CONFIG_LPM_L1)) && (USB_HOST_CONFIG_LPM_L1 > 0U))
-    ehciInstance->ehciIpBase->USBINTR |= USB_USBINTR_LPM_HST_COMPIE_MASK;
+    ehciInstance->ehciIpBase->USBINTR |= USBHS_USBINTR_LPM_HST_COMPIE_MASK;
     ehciInstance->registerNcBase->LPM_CSR0 |= USBNC_LPM_CSR0_LPM_EN_MASK;
 #endif
 #endif
@@ -3892,9 +3892,9 @@ static usb_status_t USB_HostEhciControlBus(usb_host_ehci_instance_t *ehciInstanc
                 USB_HostHelperGetPeripheralInformation(hostPointer->suspendedDevice, kUSB_HostGetDeviceAddress, &info_val);
                  OSA_ENTER_CRITICAL();
                 /* Workaroud for ERR052428: begin */
-                ehciInstance->ehciIpBase->USBSTS |= USB_USBSTS_SRI_MASK;
+                ehciInstance->ehciIpBase->USBSTS |= USBHS_USBSTS_SRI_MASK;
                 /* wait the next SOF */
-                while ((0U == (ehciInstance->ehciIpBase->USBSTS & USB_USBSTS_SRI_MASK)) && (0U != lpm_count))
+                while ((0U == (ehciInstance->ehciIpBase->USBSTS & USBHS_USBSTS_SRI_MASK)) && (0U != lpm_count))
                 {
                     lpm_count--;
                 }
@@ -4598,12 +4598,12 @@ static void USB_HostEhciTimer1(usb_host_ehci_instance_t *ehciInstance)
             usb_host_instance_t *hostPointer = (usb_host_instance_t *)ehciInstance->hostHandle;
             if (0U == (ehciInstance->ehciIpBase->PORTSC1 & USBHS_PORTSC1_FPR_MASK))
             {
-                while (!(ehciInstance->ehciIpBase->USBSTS & USB_USBSTS_LPM_L1_EXITI_MASK))
+                while (!(ehciInstance->ehciIpBase->USBSTS & USBHS_USBSTS_LPM_L1_EXITI_MASK))
                 {
                    __NOP();
                 }
                 /* clear L1 Exit Interrupt status */
-                ehciInstance->ehciIpBase->USBSTS |= USB_USBSTS_LPM_L1_EXITI_MASK;
+                ehciInstance->ehciIpBase->USBSTS |= USBHS_USBSTS_LPM_L1_EXITI_MASK;
                 ehciInstance->ehciIpBase->PORTSC1 &= ~USBHS_PORTSC1_WKDS_MASK;
                 if (0U != (ehciInstance->ehciIpBase->PORTSC1 & USBHS_PORTSC1_CCS_MASK))
                 {
@@ -4648,11 +4648,11 @@ static void USB_HostEhciCompletedLPM(usb_host_ehci_instance_t *ehciInstance)
             if (0x01U == ((portNcStatus & USBNC_LPM_CSR2_LPM_HST_STSRCVD_MASK) >> USBNC_LPM_CSR2_LPM_HST_STSRCVD_SHIFT))  /* ACK */
             {
                 /* polling if host transitions to the L1 state and the PHY is put in L1 low power mode */
-                while (!(ehciInstance->ehciIpBase->USBSTS & USB_USBSTS_LPM_L1_ENTRYI_MASK))
+                while (!(ehciInstance->ehciIpBase->USBSTS & USBHS_USBSTS_LPM_L1_ENTRYI_MASK))
                 {
                     __NOP();
                 }
-                ehciInstance->ehciIpBase->USBSTS |= USB_USBSTS_LPM_L1_ENTRYI_MASK;
+                ehciInstance->ehciIpBase->USBSTS |= USBHS_USBSTS_LPM_L1_ENTRYI_MASK;
                 /* TODO: maybe use 3us delay */
                 portStatus = ehciInstance->ehciIpBase->USBCMD;
                 portStatus &= ~USBHS_USBCMD_RS_MASK;
@@ -5613,7 +5613,7 @@ void USB_HostEhciIsrFunction(void *hostHandle)
             (void)OSA_EventSet(ehciInstance->taskEventHandle, EHCI_TASK_EVENT_TIMER1);
         }
 #if ((defined(USB_HOST_CONFIG_LPM_L1)) && (USB_HOST_CONFIG_LPM_L1 > 0U))
-        if (0U != (interruptStatus & USB_USBSTS_LPM_HST_COMPI_MASK)) /* host completed L1 LPM transaction interrupt */
+        if (0U != (interruptStatus & USBHS_USBSTS_LPM_HST_COMPI_MASK)) /* host completed L1 LPM transaction interrupt */
         {
             (void)OSA_EventSet(ehciInstance->taskEventHandle, EHCI_TASK_EVENT_HOST_COMPLETED_LPM);
         }
