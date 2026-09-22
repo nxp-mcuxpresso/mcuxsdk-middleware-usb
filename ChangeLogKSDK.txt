@@ -2,7 +2,16 @@
 @page middleware_log Middleware Change Log
 
 @section USB USB stack for MCUXpresso SDK
-  The current version of USB stack is 2.12.2.
+  The current version of USB stack is 2.13.0.
+  - 2.13.0
+    - Bug fixes:
+      - Fix one CVE issue: A missing bounds check on a host-controlled field in the RNDIS device class driver of the NXP MCUXpresso SDK USB middleware up to release 26.06.00-lts and 26.09.00-pvw2 allows a malicious USB host to read arbitrary memory from the connected device. Acknowledgment: NXP would like to thank dread (d7ead) for the responsible disclosure.
+      - Fix one CVE issue: A missing bounds check on a device-controlled field in the USB host video, audio and cdc class drivers of the NXP MCUXpresso SDK USB middleware up to release 26.06.00-lts and 26.09.00-pvw2 allows a malicious USB device to trigger a heap buffer overflow when plugged into an affected host, potentially leading to memory corruption and loss of device availability. Acknowledgment: NXP would like to thank dread (d7ead) for the responsible disclosure.
+      - Fix memory leak issue for USB device satck.
+    - Improvement:
+      - Comprehensive bounds-checking and input-validation fixes across USB host class drivers (RNDIS, CDC-ECM, Audio, Video, PHDC, MSC, MTP, CCID) addressing potential out-of-bounds reads from malformed USB descriptors.
+      - Add the support for Zephyr USB host controller drivers.
+      - Update the MCX enet adapter to support MII interface.
   - 2.12.2
     - Improvement:
       - On IP3511 controller driver, pass mandatory and required rules for MSG on Coverity system.
