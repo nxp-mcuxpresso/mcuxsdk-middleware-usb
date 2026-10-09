@@ -6,13 +6,13 @@ This repository is for MCUXpresso SDK USB middleware delivery and it contains US
 
 ## Documentation
 
-Overall details can be reviewed here: [MCUXpresso SDK Online Documentation](https://mcuxpresso.nxp.com/mcuxsdk/latest/html/introduction/README.html)
+Overall details can be reviewed here: [MCUXpresso SDK Online Documentation](https://docs.mcuxpresso.nxp.com/mcuxsdk/latest/introduction/README.html)
 
-Visit [USB - Documentation](https://mcuxpresso.nxp.com/mcuxsdk/latest/html/middleware/usb/docs/index.html) to review details on the contents in this sub-repo.
+Visit [USB - Documentation](https://docs.mcuxpresso.nxp.com/mcuxsdk/latest/middleware/usb/docs/index.html) to review details on the contents in this sub-repo.
 
 ## Setup
 
-Instructions on how to install the MCUXpresso SDK provided from GitHub via west manifest [Getting Started with SDK - Detailed Installation Instructions](https://mcuxpresso.nxp.com/mcuxsdk/latest/html/gsd/installation.html#installation)
+Instructions on how to install the MCUXpresso SDK provided from GitHub via west manifest [Getting Started with SDK - Detailed Installation Instructions](https://docs.mcuxpresso.nxp.com/mcuxsdk/latest/gsd/installation.html#installation)
 
 ## Contribution
 
