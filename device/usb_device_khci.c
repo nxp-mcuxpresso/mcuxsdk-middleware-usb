@@ -1674,6 +1674,9 @@ usb_status_t USB_DeviceKhciControl(usb_device_controller_handle khciHandle, usb_
 #if ((defined(USB_DEVICE_CONFIG_LOW_POWER_MODE)) && (USB_DEVICE_CONFIG_LOW_POWER_MODE > 0U))
 #if defined(USB_DEVICE_CONFIG_REMOTE_WAKEUP) && (USB_DEVICE_CONFIG_REMOTE_WAKEUP > 0U)
         case kUSB_DeviceControlResume:
+            /* USBCTRL[SUSP] is software-only and is still set on a device-initiated remote wakeup,
+             * because no USB interrupt occurs to clear it. Clear it before driving CTL[RESUME]. */
+            khciState->registerBase->USBCTRL &= (uint8_t)(~USB_USBCTRL_SUSP_MASK);
             khciState->registerBase->CTL |= USB_CTL_RESUME_MASK;
             startTick = deviceHandle->hwTick;
             while ((deviceHandle->hwTick - startTick) < 10U)
