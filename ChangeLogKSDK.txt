@@ -2,7 +2,14 @@
 @page middleware_log Middleware Change Log
 
 @section USB USB stack for MCUXpresso SDK
-  The current version of USB stack is 2.13.0.
+  The current version of USB stack is 2.13.1.
+  - 2.13.1
+    - Improvement:
+      - Add bounds-checking and input-validation hardening across the USB device class drivers (MTP, CCID, MSC, CDC RNDIS) and the device ch9 control-OUT handling against malformed host requests.
+      - Validate hub descriptor and hub status responses in the USB host hub class driver before parsing them.
+      - Add bounds checks to the USB PD stack and the PTN5110 driver for chunked/extended messages and vendor VDM data-object counts.
+      - Validate frame length and ENET status in the USB ethernet adapters (ENET and MCX ENET).
+      - Update the EHCI device and host controller drivers to enable the low-power USB examples on mimxrt2660evk.
   - 2.13.0
     - Bug fixes:
       - Fix one CVE issue: A missing bounds check on a host-controlled field in the RNDIS device class driver of the NXP MCUXpresso SDK USB middleware up to release 26.06.00-lts and 26.09.00-pvw2 allows a malicious USB host to read arbitrary memory from the connected device. Acknowledgment: NXP would like to thank dread (d7ead) for the responsible disclosure.
